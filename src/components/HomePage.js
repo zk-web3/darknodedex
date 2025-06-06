@@ -96,7 +96,7 @@ const HomePage = ({ onOpenApp }) => (
   <Hero>
     <GlassCard>
       <Title>DarkNode DEX</Title>
-      <Subtitle>_New Age_ Swap Experience<br />Futuristic, Fast, and Secure</Subtitle>
+      <Subtitle>New Age Swap Experience<br />Futuristic, Fast, and Secure</Subtitle>
       <OpenAppBtn onClick={onOpenApp}>Open App</OpenAppBtn>
     </GlassCard>
   </Hero>
