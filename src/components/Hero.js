@@ -5,7 +5,7 @@ function Animated3DText() {
   // Animate X, Y, Z, and skew in a loop
   return (
     <motion.div
-      className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none"
+      className="absolute inset-0 w-full h-full z-0 pointer-events-none select-none flex items-center justify-center"
       initial={{ rotateX: 0, rotateY: 0, rotateZ: 0, skewY: 0 }}
       animate={{
         rotateX: [0, 20, 0, -20, 0],
@@ -31,7 +31,14 @@ function Animated3DText() {
         lineHeight: 1,
         whiteSpace: "nowrap",
         userSelect: "none",
-        position: "relative",
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <span
@@ -52,7 +59,7 @@ function Animated3DText() {
 export default function Hero() {
   return (
     <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex items-center justify-center min-h-[70vh]">
-      {/* 3D Animated DarkNode Text */}
+      {/* 3D Animated DarkNode Text (full background) */}
       <Animated3DText />
       {/* Animated Background Particles */}
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -67,10 +74,10 @@ export default function Hero() {
           transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
         />
       </div>
-      <div className="relative z-10 w-full max-w-7xl flex flex-col md:flex-row items-center justify-between gap-12 px-6">
+      <div className="relative z-10 w-full max-w-7xl flex flex-col md:flex-row items-center md:items-start justify-between gap-12 px-6">
         {/* Left: Text */}
         <motion.div
-          className="flex-1 flex flex-col items-start md:items-start text-left"
+          className="flex-1 flex flex-col items-start text-left"
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
