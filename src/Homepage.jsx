@@ -64,7 +64,8 @@ const Navbar = () => (
   <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/10 dark:bg-black/40 border-b border-white/10 shadow-lg">
     <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-2">
-        <span className="text-2xl font-extrabold tracking-widest text-cyan-400 drop-shadow-glow">DarkNode</span>
+        <span className="text-2xl font-extrabold tracking-widest text-cyan-400 drop-shadow-glow">Hera</span>
+        <span className="ml-2 px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-xs font-semibold uppercase tracking-wider">Testnet</span>
       </div>
       <ul className="hidden md:flex items-center gap-8 text-white/90 font-medium">
         <li><a href="#" className="hover:text-cyan-400 transition">Home</a></li>
@@ -194,6 +195,31 @@ const Features = () => (
   </section>
 );
 
+// ====== CHAINS SECTION ======
+const chains = [
+  { name: "Sepolia", status: "Active", color: "bg-cyan-500/20 text-cyan-300" },
+  { name: "Goerli", status: "Ongoing", color: "bg-purple-500/20 text-purple-300" },
+  { name: "Polygon", status: "Coming Soon", color: "bg-pink-500/20 text-pink-300" },
+  { name: "Arbitrum", status: "Coming Soon", color: "bg-blue-500/20 text-blue-300" },
+];
+
+const Chains = () => (
+  <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
+    <h2 className="text-2xl font-bold text-white mb-6 text-center">Supported Chains</h2>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {chains.map((c) => (
+        <div
+          key={c.name}
+          className={`rounded-xl p-6 text-center font-semibold shadow-lg border border-white/10 backdrop-blur-xl ${c.color}`}
+        >
+          <div className="text-lg mb-2">{c.name}</div>
+          <div className="text-xs uppercase tracking-wider font-bold opacity-80">{c.status}</div>
+        </div>
+      ))}
+    </div>
+  </section>
+);
+
 // ====== STATISTICS SECTION ======
 const stats = [
   { label: "Total Users", value: 12890 },
@@ -257,7 +283,7 @@ const Footer = () => (
   <footer className="w-full bg-white/10 dark:bg-black/40 border-t border-white/10 py-8 mt-16 backdrop-blur-xl shadow-lg">
     <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6 gap-4">
       <div className="flex items-center gap-2">
-        <span className="text-xl font-extrabold text-cyan-400">DarkNode</span>
+        <span className="text-xl font-extrabold text-cyan-400">Hera</span>
         <span className="text-white/50 text-sm">©2025</span>
       </div>
       <ul className="flex items-center gap-6 text-white/80 text-sm">
@@ -287,6 +313,7 @@ export default function Homepage() {
       <Navbar />
       <Hero />
       <Features />
+      <Chains />
       <Statistics />
       <Footer />
     </div>
