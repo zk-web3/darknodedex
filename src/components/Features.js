@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 const features = [
   {
     icon: "⚡️",
-    title: "Swap With 0% Gas",
-    desc: "Trade instantly with zero gas fees on Sepolia.",
+    title: "Swap With Less Gas Fees On Sepolia",
+    desc: "Trade instantly with less gas fees on Sepolia.",
   },
   {
     icon: "🧩",
