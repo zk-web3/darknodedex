@@ -8,9 +8,9 @@ const features = [
     desc: "Trade instantly with zero gas fees on Sepolia.",
   },
   {
-    icon: "💧",
-    title: "Liquidity Mining",
-    desc: "Earn rewards by providing liquidity pools.",
+    icon: "🧩",
+    title: "Modular Architecture",
+    desc: "Built so you can add new features and integrations easily.",
   },
   {
     icon: "🛡️",
@@ -18,9 +18,9 @@ const features = [
     desc: "Secure, fast, and reliable on Ethereum testnet.",
   },
   {
-    icon: "👨‍💻",
-    title: "Developer Friendly",
-    desc: "Open APIs and docs for easy integration.",
+    icon: "🚀",
+    title: "Easy Future Upgrades",
+    desc: "Designed for rapid deployment of new DeFi features.",
   },
 ];
 
