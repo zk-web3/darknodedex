@@ -2,10 +2,10 @@ import React from "react";
 import { motion } from "framer-motion";
 
 const stats = [
-  { label: "Total Volume", value: 0 prefix: "$" },
+  { label: "Total Volume", value: 0, prefix: "$" },
   { label: "Total Trades", value: 0 },
-  { label: "Users Connected", value: 0},
-  { label: "Pairs Supported", value:0},
+  { label: "Users Connected", value: 0 },
+  { label: "Pairs Supported", value: 0 },
 ];
 
 function CountUp({ end, prefix = "" }) {
