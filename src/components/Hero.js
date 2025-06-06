@@ -1,9 +1,46 @@
 import React from "react";
 import { motion } from "framer-motion";
 
+function Animated3DText() {
+  // Animate X, Y, Z, and skew in a loop
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none select-none"
+      initial={{ rotateX: 0, rotateY: 0, rotateZ: 0, skewY: 0 }}
+      animate={{
+        rotateX: [0, 20, 0, -20, 0],
+        rotateY: [0, 0, 30, 0, -30, 0],
+        rotateZ: [0, 0, 0, 15, 0, -15, 0],
+        skewY: [0, 10, 0, -10, 0],
+      }}
+      transition={{
+        repeat: Infinity,
+        duration: 12,
+        ease: "easeInOut",
+      }}
+      style={{
+        fontSize: "8vw",
+        fontWeight: 900,
+        color: "#38bdf8",
+        textShadow:
+          "0 0 64px #38bdf8, 0 0 32px #8b5cf6, 0 0 2px #fff, 0 0 128px #38bdf8",
+        opacity: 0.08,
+        letterSpacing: "0.1em",
+        lineHeight: 1,
+        whiteSpace: "nowrap",
+        userSelect: "none",
+      }}
+    >
+      DarkNode
+    </motion.div>
+  );
+}
+
 export default function Hero() {
   return (
     <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex items-center justify-center min-h-[70vh]">
+      {/* 3D Animated DarkNode Text */}
+      <Animated3DText />
       {/* Animated Background Particles */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <motion.div
