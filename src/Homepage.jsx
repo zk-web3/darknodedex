@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 
 // ====== ICONS (PLACEHOLDER SVGs) ======
@@ -27,9 +27,41 @@ const LiquidityIcon = () => (
   </svg>
 );
 
+// ====== GLOWING CURSOR ======
+function GlowingCursor() {
+  const cursorRef = useRef();
+  useEffect(() => {
+    const moveCursor = (e) => {
+      if (cursorRef.current) {
+        cursorRef.current.style.left = `${e.clientX}px`;
+        cursorRef.current.style.top = `${e.clientY}px`;
+      }
+    };
+    window.addEventListener("mousemove", moveCursor);
+    return () => window.removeEventListener("mousemove", moveCursor);
+  }, []);
+  return (
+    <div
+      ref={cursorRef}
+      className="fixed z-[9999] pointer-events-none opacity-70 hidden md:block"
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, #00e0ff 60%, #a259ff 100%)",
+        boxShadow: "0 0 32px 8px #00e0ff99, 0 0 8px 2px #a259ff99",
+        transform: "translate(-50%, -50%)",
+        transition: "background 0.2s, box-shadow 0.2s",
+        top: 0,
+        left: 0,
+      }}
+    />
+  );
+}
+
 // ====== NAVBAR ======
 const Navbar = () => (
-  <header className="sticky top-0 z-30 w-full backdrop-blur bg-black/40 border-b border-white/10">
+  <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/10 dark:bg-black/40 border-b border-white/10 shadow-lg">
     <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-2">
         <span className="text-2xl font-extrabold tracking-widest text-cyan-400 drop-shadow-glow">DarkNode</span>
@@ -41,7 +73,7 @@ const Navbar = () => (
         <li><a href="#" className="hover:text-cyan-400 transition">Faucet</a></li>
         <li><a href="#" className="hover:text-cyan-400 transition">Docs</a></li>
       </ul>
-      <button className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur">
+      <button className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur border border-cyan-400/30">
         Connect Wallet
       </button>
     </nav>
@@ -50,25 +82,29 @@ const Navbar = () => (
 
 // ====== HERO SECTION ======
 const Hero = () => (
-  <section className="relative w-full pt-20 pb-16 md:pb-32 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden">
+  <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex items-center justify-center min-h-[70vh]">
     {/* Animated Background Particles */}
     <div className="absolute inset-0 z-0 pointer-events-none">
       <motion.div
-        className="absolute top-1/4 left-1/3 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl"
+        className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"
         animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
         transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"
+        className="absolute bottom-0 right-0 w-[32rem] h-[32rem] bg-purple-500/20 rounded-full blur-3xl"
         animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
         transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
       />
     </div>
-    <div className="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6">
-      {/* Left: Text */}
-      <div className="flex-1 flex flex-col items-start gap-6">
+    <div className="relative z-10 w-full flex justify-center">
+      <motion.div
+        className="w-full max-w-3xl bg-white/10 dark:bg-black/30 rounded-3xl shadow-2xl border border-cyan-400/20 backdrop-blur-xl px-8 py-14 flex flex-col items-center text-center"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+      >
         <motion.h1
-          className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-glow"
+          className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-glow mb-4"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
@@ -76,14 +112,14 @@ const Hero = () => (
           Smarter Swaps.<br className="hidden md:block" /> Built for Sepolia.
         </motion.h1>
         <motion.p
-          className="text-lg md:text-2xl text-white/80 max-w-xl"
+          className="text-lg md:text-2xl text-white/80 max-w-xl mx-auto mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.8 }}
         >
           Experience next-gen DeFi trading with blazing fast swaps, deep liquidity, and a seamless UI. Powered by Sepolia Testnet.
         </motion.p>
-        <div className="flex gap-4 mt-4">
+        <div className="flex gap-4 justify-center mb-6">
           <motion.a
             href="#"
             className="px-8 py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition"
@@ -100,41 +136,18 @@ const Hero = () => (
           </motion.a>
         </div>
         {/* Testnet Badge */}
-        <div className="mt-6">
-          <span className="inline-block px-4 py-1 rounded-full bg-cyan-500/20 text-cyan-300 font-semibold text-sm shadow shadow-cyan-500/20">
-            Powered by Sepolia Testnet
-          </span>
-        </div>
-      </div>
-      {/* Right: Animated Visual */}
-      <div className="flex-1 flex items-center justify-center mt-12 md:mt-0">
+        <span className="inline-block px-4 py-1 rounded-full bg-cyan-500/20 text-cyan-300 font-semibold text-sm shadow shadow-cyan-500/20 mb-2">
+          Powered by Sepolia Testnet
+        </span>
+        {/* Animated Sliding Line */}
         <motion.div
-          className="w-80 h-80 md:w-96 md:h-96 rounded-3xl bg-gradient-to-br from-cyan-500/30 to-purple-500/30 shadow-2xl shadow-cyan-500/20 flex items-center justify-center relative"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1 }}
-        >
-          {/* Placeholder for animated tokens/cards */}
-          <motion.div
-            className="w-40 h-40 rounded-full bg-cyan-400/30 blur-2xl absolute top-10 left-10"
-            animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="w-32 h-32 rounded-full bg-purple-400/30 blur-2xl absolute bottom-10 right-10"
-            animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
-            transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-          />
-        </motion.div>
-      </div>
+          className="mx-auto mt-8 w-56 h-1 rounded-full bg-gradient-to-r from-cyan-400 to-purple-400 shadow-lg shadow-cyan-500/20"
+          initial={{ width: 0 }}
+          animate={{ width: "14rem" }}
+          transition={{ duration: 1.2, delay: 0.5, type: "spring" }}
+        />
+      </motion.div>
     </div>
-    {/* Animated Sliding Line */}
-    <motion.div
-      className="mx-auto mt-16 w-56 h-1 rounded-full bg-gradient-to-r from-cyan-400 to-purple-400 shadow-lg shadow-cyan-500/20"
-      initial={{ width: 0 }}
-      animate={{ width: "14rem" }}
-      transition={{ duration: 1.2, delay: 0.5, type: "spring" }}
-    />
   </section>
 );
 
@@ -168,7 +181,7 @@ const Features = () => (
       {features.map((f, i) => (
         <motion.div
           key={f.title}
-          className="group bg-gradient-to-br from-white/5 to-white/10 rounded-2xl p-8 flex flex-col items-center text-center shadow-xl border border-cyan-400/10 hover:border-cyan-400/40 transition-all duration-300 relative overflow-hidden"
+          className="group bg-white/10 dark:bg-black/30 backdrop-blur-xl rounded-2xl p-8 flex flex-col items-center text-center shadow-xl border border-cyan-400/10 hover:border-cyan-400/40 transition-all duration-300 relative overflow-hidden"
           whileHover={{ scale: 1.04, boxShadow: "0 0 32px #00e0ff88" }}
         >
           <div className="mb-4">{f.icon}</div>
@@ -195,7 +208,7 @@ const Statistics = () => (
       {stats.map((s, i) => (
         <motion.div
           key={s.label}
-          className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-xl p-8 flex flex-col items-center shadow-lg border border-cyan-400/10"
+          className="bg-white/10 dark:bg-black/30 backdrop-blur-xl rounded-xl p-8 flex flex-col items-center shadow-lg border border-cyan-400/10"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.15, duration: 0.7 }}
@@ -241,7 +254,7 @@ function CountUp({ end }) {
 
 // ====== FOOTER ======
 const Footer = () => (
-  <footer className="w-full bg-black/80 border-t border-white/10 py-8 mt-16">
+  <footer className="w-full bg-white/10 dark:bg-black/40 border-t border-white/10 py-8 mt-16 backdrop-blur-xl shadow-lg">
     <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6 gap-4">
       <div className="flex items-center gap-2">
         <span className="text-xl font-extrabold text-cyan-400">DarkNode</span>
@@ -270,6 +283,7 @@ const Footer = () => (
 export default function Homepage() {
   return (
     <div className="min-h-screen w-full font-sans bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] text-white relative overflow-x-hidden">
+      <GlowingCursor />
       <Navbar />
       <Hero />
       <Features />
