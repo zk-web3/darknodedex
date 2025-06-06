@@ -1,9 +1,0 @@
-export { default as TopBar } from './TopBar';
-export { default as AnimatedBackground } from './AnimatedBackground';
-export { default as MaintenanceModal } from './MaintenanceModal';
-export { default as HomePage } from './HomePage';
-export { default as SwapPage } from './SwapPage';
-export { default as LiquidityPage } from './LiquidityPage';
-export { default as FaucetPage } from './FaucetPage';
-export { default as HistoryPage } from './HistoryPage';
-export { default as Notifications } from './Notifications'; 
