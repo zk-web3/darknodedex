@@ -1,5 +1,7 @@
-export { default as DarkNodeLoading } from './DarkNodeLoading';
-export { default as Navbar } from './Navbar';
+export { default as TopBar } from './TopBar';
+export { default as AnimatedBackground } from './AnimatedBackground';
+export { default as MaintenanceModal } from './MaintenanceModal';
+export { default as HomePage } from './HomePage';
 export { default as SwapPage } from './SwapPage';
 export { default as LiquidityPage } from './LiquidityPage';
 export { default as FaucetPage } from './FaucetPage';

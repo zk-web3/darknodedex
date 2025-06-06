@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
-import DarkNodeLoading from './components/DarkNodeLoading';
-import Navbar from './components/Navbar';
+import TopBar from './components/TopBar';
+import AnimatedBackground from './components/AnimatedBackground';
+import MaintenanceModal from './components/MaintenanceModal';
+import HomePage from './components/HomePage';
 import SwapPage from './components/SwapPage';
 import LiquidityPage from './components/LiquidityPage';
 import FaucetPage from './components/FaucetPage';
 import HistoryPage from './components/HistoryPage';
-import Notifications from './components/Notifications';
 
 // Global Styles with font and background gradient
 const GlobalStyle = createGlobalStyle`
@@ -35,9 +36,6 @@ const darkTheme = {
   shadow: '0 8px 32px 0 rgba(0,224,255,0.15)',
   border: '1.5px solid rgba(0,224,255,0.15)',
   inputBg: 'rgba(30,34,40,0.8)',
-  skeleton: 'rgba(255,255,255,0.08)',
-  toastSuccess: '#00e0ff',
-  toastError: '#ff3b6e',
 };
 
 const lightTheme = {
@@ -53,83 +51,53 @@ const lightTheme = {
   shadow: '0 8px 32px 0 rgba(0,180,216,0.10)',
   border: '1.5px solid rgba(0,180,216,0.10)',
   inputBg: 'rgba(255,255,255,0.8)',
-  skeleton: 'rgba(0,0,0,0.06)',
-  toastSuccess: '#00b4d8',
-  toastError: '#ff3b6e',
 };
-
-// Dummy wallet connect logic
-const shortenAddress = (addr) => addr.slice(0, 6) + '...' + addr.slice(-4);
 
 function App() {
   const [theme, setTheme] = useState('dark');
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState('swap');
-  const [wallet, setWallet] = useState(null); // null or address string
-  const [notifications, setNotifications] = useState([]);
-
-  // Simulate loading on mount
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2200);
-    return () => clearTimeout(timer);
-  }, []);
+  const [page, setPage] = useState('home');
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Theme object memoized
   const themeObj = useMemo(() => (theme === 'dark' ? darkTheme : lightTheme), [theme]);
 
-  // Notification helpers
-  const notify = (type, message) => {
-    setNotifications((prev) => [
-      ...prev,
-      { id: Date.now() + Math.random(), type, message },
-    ]);
-  };
-  const removeNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  // Navigation handler
+  const handleNav = (key) => {
+    setPage(key);
   };
 
-  // Wallet connect placeholder
-  const handleWalletConnect = () => {
-    if (wallet) setWallet(null);
-    else setWallet('0xA1b2C3d4E5f6A7b8C9d0E1F2a3B4C5D6e7F8a9B0');
+  // Wallet connect handler (shows modal)
+  const handleWalletClick = () => {
+    setModalOpen(true);
+  };
+
+  // HomePage open app handler
+  const handleOpenApp = () => {
+    setPage('swap');
   };
 
   // Page render
   let content;
-  if (page === 'swap')
-    content = <SwapPage wallet={wallet} notify={notify} theme={themeObj} />;
+  if (page === 'home')
+    content = <HomePage onOpenApp={handleOpenApp} />;
+  else if (page === 'swap')
+    content = <SwapPage />;
   else if (page === 'liquidity')
-    content = <LiquidityPage wallet={wallet} notify={notify} theme={themeObj} />;
+    content = <LiquidityPage />;
   else if (page === 'faucet')
-    content = <FaucetPage wallet={wallet} notify={notify} theme={themeObj} />;
+    content = <FaucetPage />;
   else if (page === 'history')
-    content = <HistoryPage wallet={wallet} notify={notify} theme={themeObj} />;
+    content = <HistoryPage />;
 
   return (
     <ThemeProvider theme={themeObj}>
       <GlobalStyle />
-      {loading ? (
-        <DarkNodeLoading />
-      ) : (
-        <>
-          <Navbar
-            page={page}
-            setPage={setPage}
-            theme={theme}
-            setTheme={setTheme}
-            wallet={wallet}
-            onWalletConnect={handleWalletConnect}
-            shortenAddress={shortenAddress}
-          />
-          <MainContent>
-            {content}
-          </MainContent>
-          <Notifications
-            notifications={notifications}
-            removeNotification={removeNotification}
-          />
-        </>
-      )}
+      <AnimatedBackground />
+      <TopBar page={page} setPage={handleNav} onWalletClick={handleWalletClick} />
+      <MainContent>
+        {content}
+      </MainContent>
+      <MaintenanceModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </ThemeProvider>
   );
 }

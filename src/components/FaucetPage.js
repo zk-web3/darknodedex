@@ -1,15 +1,7 @@
-import React, { useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import React from 'react';
+import styled from 'styled-components';
 
-// Dummy claim state
-const CLAIM_LIMIT = 1;
-
-// Skeleton loader animation
-const shimmer = keyframes`
-  0% { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
-`;
-
+// Card container for glassmorphism
 const Card = styled.div`
   background: ${({ theme }) => theme.card};
   box-shadow: ${({ theme }) => theme.shadow};
@@ -56,91 +48,17 @@ const ClaimBtn = styled.button`
   padding: 16px 0;
   margin-top: 10px;
   box-shadow: 0 0 16px 0 ${({ theme }) => theme.accent}55;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  &:hover {
-    background: ${({ theme }) => theme.accent2};
-  }
-  &:disabled {
-    background: #8888;
-    color: #eee8;
-    cursor: not-allowed;
-    box-shadow: none;
-  }
+  cursor: not-allowed;
+  opacity: 0.7;
 `;
 
-// Progress bar animation
-const progressAnim = keyframes`
-  0% { width: 0; }
-  100% { width: 100%; }
-`;
-const ProgressBar = styled.div`
-  width: 100%;
-  height: 8px;
-  background: ${({ theme }) => theme.skeleton};
-  border-radius: 6px;
-  overflow: hidden;
-  margin-top: 18px;
-`;
-const Progress = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, #00e0ff 0%, #a259ff 100%);
-  border-radius: 6px;
-  animation: ${progressAnim} 1.2s linear;
-`;
-
-// Skeleton loader
-const Skeleton = styled.div`
-  height: 24px;
-  width: 100%;
-  border-radius: 8px;
-  background: linear-gradient(90deg, ${({ theme }) => theme.skeleton} 25%, #fff1 50%, ${({ theme }) => theme.skeleton} 75%);
-  background-size: 400px 100%;
-  animation: ${shimmer} 1.2s linear infinite;
-`;
-
-// Main FaucetPage component
-const FaucetPage = ({ wallet, notify, theme }) => {
-  // Dummy state for claim
-  const [claimed, setClaimed] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(false);
-
-  // Handle claim
-  const handleClaim = () => {
-    setLoading(true);
-    setProgress(true);
-    setTimeout(() => {
-      setLoading(false);
-      setProgress(false);
-      setClaimed((c) => c + 1);
-      notify('success', 'Faucet claimed! 100 Test USDC sent.');
-    }, 1200);
-  };
-
+// Main FaucetPage component (no data, just UI)
+const FaucetPage = () => {
   return (
     <Card>
       <Title>Faucet</Title>
-      {!wallet ? (
-        <Info>Connect your wallet to claim test tokens.</Info>
-      ) : claimed >= CLAIM_LIMIT ? (
-        <Info style={{ color: theme.toastError }}>
-          Faucet claim limit reached. Try again later.
-        </Info>
-      ) : (
-        <Info>Get 100 Test USDC for development and testing.</Info>
-      )}
-      <ClaimBtn
-        onClick={handleClaim}
-        disabled={!wallet || claimed >= CLAIM_LIMIT || loading}
-      >
-        {loading ? <Skeleton /> : claimed >= CLAIM_LIMIT ? 'Claimed' : 'Claim 100 USDC'}
-      </ClaimBtn>
-      {progress && (
-        <ProgressBar>
-          <Progress />
-        </ProgressBar>
-      )}
+      <Info>Connect your wallet to claim test tokens.</Info>
+      <ClaimBtn disabled>Claim 100 USDC</ClaimBtn>
     </Card>
   );
 };
