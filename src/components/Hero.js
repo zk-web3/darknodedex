@@ -21,16 +21,29 @@ function Animated3DText() {
       style={{
         fontSize: "8vw",
         fontWeight: 900,
-        color: "#38bdf8",
+        background: "linear-gradient(90deg, #bfc7cf 0%, #38bdf8 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
         textShadow:
-          "0 0 64px #38bdf8, 0 0 32px #8b5cf6, 0 0 2px #fff, 0 0 128px #38bdf8",
-        opacity: 0.08,
+          "0 0 64px #38bdf8, 0 0 32px #bfc7cf, 0 0 2px #fff, 0 0 128px #38bdf8",
+        opacity: 0.65,
         letterSpacing: "0.1em",
         lineHeight: 1,
         whiteSpace: "nowrap",
         userSelect: "none",
+        position: "relative",
       }}
     >
+      <span
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: -1,
+          background: "rgba(0,0,0,0.7)",
+          borderRadius: "2vw",
+          filter: "blur(8px)",
+        }}
+      />
       DarkNode
     </motion.div>
   );
