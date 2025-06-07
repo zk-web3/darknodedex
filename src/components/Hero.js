@@ -3,40 +3,98 @@ import { motion } from "framer-motion";
 import { FiZap, FiLayers, FiShield, FiTrendingUp } from "react-icons/fi";
 
 function Animated3DText() {
-  // 3D, multi-axis, reveal-effect, high-transparency rotating background text
+  // 3D, multi-axis, reveal-effect, high-transparency rotating background text with extra neon ring and pulse
   return (
-    <motion.div
-      className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0"
-      initial={{ rotateY: 0, rotateX: 0, rotateZ: 0, opacity: 0 }}
-      animate={{
-        rotateY: [0, 360],
-        rotateX: [0, 30, -30, 0],
-        rotateZ: [0, 20, -20, 0],
-        opacity: [0, 0.65, 0.65, 0.65, 0],
-      }}
-      transition={{
-        repeat: Infinity,
-        duration: 36,
-        ease: "easeInOut",
-      }}
-      style={{
-        fontSize: "13vw",
-        fontWeight: 900,
-        background: "linear-gradient(120deg, #0fffc3 0%, #00e0ff 40%, #a259ff 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        filter: "blur(2.5px) drop-shadow(0 0 120px #00e0ffcc)",
-        letterSpacing: "0.08em",
-        lineHeight: 1,
-        userSelect: "none",
-        opacity: 0.65,
-        textShadow: "0 0 128px #00e0ff, 0 0 32px #a259ff, 0 0 2px #fff, 0 0 200px #0fffc3",
-        transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
-        mixBlendMode: "lighten",
-      }}
-    >
-      DarkNode
-    </motion.div>
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+      {/* Neon Glow Ring */}
+      <motion.div
+        className="absolute"
+        style={{
+          width: "70vw",
+          height: "70vw",
+          minWidth: 480,
+          minHeight: 480,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          borderRadius: "50%",
+          border: "6px solid #00e0ff55",
+          boxShadow: "0 0 120px 40px #00e0ff44, 0 0 240px 80px #a259ff22",
+          filter: "blur(2px)",
+        }}
+        initial={{ scale: 0.98, rotate: 0, opacity: 0.5 }}
+        animate={{
+          scale: [0.98, 1.04, 0.98],
+          rotate: [0, 360],
+          opacity: [0.5, 0.7, 0.5],
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 28,
+          ease: "easeInOut",
+        }}
+      />
+      {/* Animated Shadow Pulse */}
+      <motion.div
+        className="absolute"
+        style={{
+          width: "38vw",
+          height: "7vw",
+          minWidth: 220,
+          minHeight: 40,
+          maxWidth: 600,
+          maxHeight: 120,
+          borderRadius: "50%",
+          background: "radial-gradient(ellipse at center, #00e0ff33 0%, #0000 80%)",
+          filter: "blur(18px)",
+          bottom: 0,
+        }}
+        initial={{ scale: 1, opacity: 0.3 }}
+        animate={{ scale: [1, 1.12, 1], opacity: [0.3, 0.5, 0.3] }}
+        transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
+      />
+      {/* 3D Rotating Text with shifting gradient/blur */}
+      <motion.div
+        initial={{ rotateY: 0, rotateX: 0, rotateZ: 0, opacity: 0 }}
+        animate={{
+          rotateY: [0, 360],
+          rotateX: [0, 30, -30, 0],
+          rotateZ: [0, 20, -20, 0],
+          opacity: [0, 0.65, 0.65, 0.65, 0],
+          filter: [
+            "blur(2.5px) drop-shadow(0 0 120px #00e0ffcc)",
+            "blur(4px) drop-shadow(0 0 180px #a259ffcc)",
+            "blur(2.5px) drop-shadow(0 0 120px #00e0ffcc)",
+          ],
+          background: [
+            "linear-gradient(120deg, #0fffc3 0%, #00e0ff 40%, #a259ff 100%)",
+            "linear-gradient(120deg, #a259ff 0%, #00e0ff 60%, #0fffc3 100%)",
+            "linear-gradient(120deg, #0fffc3 0%, #00e0ff 40%, #a259ff 100%)",
+          ],
+        }}
+        transition={{
+          repeat: Infinity,
+          duration: 36,
+          ease: "easeInOut",
+        }}
+        style={{
+          fontSize: "13vw",
+          fontWeight: 900,
+          background: "linear-gradient(120deg, #0fffc3 0%, #00e0ff 40%, #a259ff 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          letterSpacing: "0.08em",
+          lineHeight: 1,
+          userSelect: "none",
+          opacity: 0.65,
+          textShadow: "0 0 128px #00e0ff, 0 0 32px #a259ff, 0 0 2px #fff, 0 0 200px #0fffc3",
+          transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
+          mixBlendMode: "lighten",
+        }}
+        className="will-change-transform"
+      >
+        DarkNode
+      </motion.div>
+    </div>
   );
 }
 
@@ -61,7 +119,7 @@ function ForegroundHeroText() {
 export default function Hero({ onLaunchApp }) {
   return (
     <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex flex-col items-center min-h-[80vh] px-4">
-      {/* 3D Rotating Background Text */}
+      {/* 3D Rotating Background Text + Effects */}
       <Animated3DText />
       {/* Foreground Animated Text */}
       <ForegroundHeroText />
