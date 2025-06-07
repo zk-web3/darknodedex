@@ -1,34 +1,53 @@
 import React, { useState } from "react";
-import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import Features from "./components/Features";
-import Stats from "./components/Stats";
-import Callout from "./components/Callout";
-import WhyDarkNode from "./components/WhyDarkNode";
-import Footer from "./components/Footer";
-import GlowingCursor from "./components/GlowingCursor";
-import Modal from "./components/Modal";
+import Swap from "./components/Swap";
+import Liquidity from "./components/Liquidity";
+import TokenListDrawer from "./components/TokenListDrawer";
+import SettingsModal from "./components/SettingsModal";
 
 export default function App() {
-  const [modalOpen, setModalOpen] = useState(false);
-  const showModal = () => setModalOpen(true);
-  const closeModal = () => setModalOpen(false);
+  const [page, setPage] = useState("swap");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drawerType, setDrawerType] = useState(null);
+
+  const openDrawer = (type) => {
+    setDrawerType(type);
+    setDrawerOpen(true);
+  };
+  const closeDrawer = () => setDrawerOpen(false);
+  const openSettings = () => setSettingsOpen(true);
+  const closeSettings = () => setSettingsOpen(false);
+
   return (
     <div className="min-h-screen w-full font-sans bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] text-white relative overflow-x-hidden">
-      <GlowingCursor />
-      <Navbar onNavClick={showModal} onWalletClick={showModal} />
-      <div onClick={showModal}>
-        <Hero />
-        <Features />
-        <Stats />
-        <Callout />
-        <WhyDarkNode />
-      </div>
-      <Footer onFooterLinkClick={showModal} />
-      <Modal open={modalOpen} onClose={closeModal}>
-        <h2 className="text-2xl font-bold mb-2">App is under progress</h2>
-        <p className="text-white/80">This feature will be available soon.</p>
-      </Modal>
+      <nav className="flex justify-center gap-6 py-8">
+        <button
+          className={`px-6 py-2 rounded-2xl font-bold text-lg transition bg-black/30 border border-cyan-400/20 text-cyan-300 hover:bg-cyan-400/10 ${page === "swap" ? "bg-cyan-500/80 text-white" : ""}`}
+          onClick={() => setPage("swap")}
+        >
+          Swap
+        </button>
+        <button
+          className={`px-6 py-2 rounded-2xl font-bold text-lg transition bg-black/30 border border-cyan-400/20 text-cyan-300 hover:bg-cyan-400/10 ${page === "liquidity" ? "bg-purple-600/80 text-white" : ""}`}
+          onClick={() => setPage("liquidity")}
+        >
+          Liquidity
+        </button>
+      </nav>
+      {page === "swap" && (
+        <Swap
+          onOpenSettings={openSettings}
+          onOpenTokenList={openDrawer}
+          onConnectWallet={() => {}}
+        />
+      )}
+      {page === "liquidity" && (
+        <Liquidity
+          onOpenTokenList={openDrawer}
+        />
+      )}
+      <TokenListDrawer open={drawerOpen} onClose={closeDrawer} />
+      <SettingsModal open={settingsOpen} onClose={closeSettings} />
     </div>
   );
 } 
