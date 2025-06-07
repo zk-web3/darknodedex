@@ -3,9 +3,36 @@ import { motion } from "framer-motion";
 import { FiZap, FiLayers, FiShield, FiTrendingUp } from "react-icons/fi";
 
 function Animated3DText() {
+  // Large, 3D, rotating background text
   return (
     <motion.div
-      className="w-full flex items-center justify-center select-none mb-8"
+      className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0"
+      initial={{ rotateY: 0, rotateX: 0, opacity: 0 }}
+      animate={{ rotateY: [0, 360], rotateX: [0, 20, -20, 0], opacity: 0.18 }}
+      transition={{ repeat: Infinity, duration: 32, ease: "linear" }}
+      style={{
+        fontSize: "13vw",
+        fontWeight: 900,
+        background: "linear-gradient(90deg, #00e0ff 0%, #a259ff 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        filter: "blur(1.5px) drop-shadow(0 0 80px #00e0ff88)",
+        letterSpacing: "0.08em",
+        lineHeight: 1,
+        userSelect: "none",
+        opacity: 0.18,
+        textShadow: "0 0 128px #00e0ff, 0 0 32px #a259ff, 0 0 2px #fff",
+      }}
+    >
+      DarkNode
+    </motion.div>
+  );
+}
+
+function ForegroundHeroText() {
+  return (
+    <motion.div
+      className="w-full flex items-center justify-center select-none mb-8 z-10"
       initial={{ opacity: 0, y: -30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1 }}
@@ -23,11 +50,13 @@ function Animated3DText() {
 export default function Hero({ onLaunchApp }) {
   return (
     <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex flex-col items-center min-h-[80vh] px-4">
-      {/* Animated DarkNode Text */}
+      {/* 3D Rotating Background Text */}
       <Animated3DText />
+      {/* Foreground Animated Text */}
+      <ForegroundHeroText />
       {/* Headline & Subtitle */}
       <motion.div
-        className="max-w-2xl w-full flex flex-col items-center text-center mx-auto"
+        className="max-w-2xl w-full flex flex-col items-center text-center mx-auto z-10"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1, delay: 0.2 }}
