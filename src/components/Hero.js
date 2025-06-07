@@ -3,25 +3,36 @@ import { motion } from "framer-motion";
 import { FiZap, FiLayers, FiShield, FiTrendingUp } from "react-icons/fi";
 
 function Animated3DText() {
-  // Large, 3D, rotating background text
+  // 3D, multi-axis, reveal-effect, high-transparency rotating background text
   return (
     <motion.div
       className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0"
-      initial={{ rotateY: 0, rotateX: 0, opacity: 0 }}
-      animate={{ rotateY: [0, 360], rotateX: [0, 20, -20, 0], opacity: 0.18 }}
-      transition={{ repeat: Infinity, duration: 32, ease: "linear" }}
+      initial={{ rotateY: 0, rotateX: 0, rotateZ: 0, opacity: 0 }}
+      animate={{
+        rotateY: [0, 360],
+        rotateX: [0, 30, -30, 0],
+        rotateZ: [0, 20, -20, 0],
+        opacity: [0, 0.65, 0.65, 0.65, 0],
+      }}
+      transition={{
+        repeat: Infinity,
+        duration: 36,
+        ease: "easeInOut",
+      }}
       style={{
         fontSize: "13vw",
         fontWeight: 900,
-        background: "linear-gradient(90deg, #00e0ff 0%, #a259ff 100%)",
+        background: "linear-gradient(120deg, #0fffc3 0%, #00e0ff 40%, #a259ff 100%)",
         WebkitBackgroundClip: "text",
         WebkitTextFillColor: "transparent",
-        filter: "blur(1.5px) drop-shadow(0 0 80px #00e0ff88)",
+        filter: "blur(2.5px) drop-shadow(0 0 120px #00e0ffcc)",
         letterSpacing: "0.08em",
         lineHeight: 1,
         userSelect: "none",
-        opacity: 0.18,
-        textShadow: "0 0 128px #00e0ff, 0 0 32px #a259ff, 0 0 2px #fff",
+        opacity: 0.65,
+        textShadow: "0 0 128px #00e0ff, 0 0 32px #a259ff, 0 0 2px #fff, 0 0 200px #0fffc3",
+        transition: "opacity 1.5s cubic-bezier(0.4,0,0.2,1)",
+        mixBlendMode: "lighten",
       }}
     >
       DarkNode
