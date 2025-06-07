@@ -6,11 +6,10 @@ const links = [
   { name: "Swap", href: "#" },
   { name: "Liquidity", href: "#" },
   { name: "Faucet", href: "#" },
-  { name: "Docs", href: "#" },
+  { name: "Docs", href: "https://docs.darknode.xyz", external: true },
 ];
 
-export default function Navbar({ onNavClick, onWalletClick }) {
-  const [active] = useState("Home");
+export default function Navbar({ onNavClick, onWalletClick, activePage }) {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/10 dark:bg-black/40 border-b border-white/10 shadow-lg">
@@ -23,27 +22,42 @@ export default function Navbar({ onNavClick, onWalletClick }) {
         <ul className="hidden md:flex items-center gap-8 text-white/90 font-medium">
           {links.map((link) => (
             <li key={link.name}>
-              <button
-                className="relative px-2 py-1 focus:outline-none"
-                onClick={onNavClick}
-              >
-                <span
+              {link.external ? (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={
-                    active === link.name
+                    activePage === link.name
                       ? "text-cyan-400"
                       : "hover:text-cyan-400 transition"
                   }
                 >
                   {link.name}
-                </span>
-                {active === link.name && (
-                  <motion.div
-                    layoutId="underline"
-                    className="absolute left-0 right-0 -bottom-1 h-1 rounded-full bg-gradient-to-r from-cyan-400 to-purple-400 shadow-lg"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </button>
+                </a>
+              ) : (
+                <button
+                  className="relative px-2 py-1 focus:outline-none"
+                  onClick={() => onNavClick(link.name)}
+                >
+                  <span
+                    className={
+                      activePage === link.name
+                        ? "text-cyan-400"
+                        : "hover:text-cyan-400 transition"
+                    }
+                  >
+                    {link.name}
+                  </span>
+                  {activePage === link.name && (
+                    <motion.div
+                      layoutId="underline"
+                      className="absolute left-0 right-0 -bottom-1 h-1 rounded-full bg-gradient-to-r from-cyan-400 to-purple-400 shadow-lg"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -76,18 +90,34 @@ export default function Navbar({ onNavClick, onWalletClick }) {
         >
           {links.map((link) => (
             <li key={link.name}>
-              <button
-                className={
-                  "w-full text-left py-2 px-2 text-lg " +
-                  (active === link.name ? "text-cyan-400" : "text-white/90 hover:text-cyan-400")
-                }
-                onClick={() => {
-                  onNavClick();
-                  setOpen(false);
-                }}
-              >
-                {link.name}
-              </button>
+              {link.external ? (
+                <a
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={
+                    activePage === link.name
+                      ? "text-cyan-400"
+                      : "text-white/90 hover:text-cyan-400"
+                  }
+                  onClick={() => setOpen(false)}
+                >
+                  {link.name}
+                </a>
+              ) : (
+                <button
+                  className={
+                    "w-full text-left py-2 px-2 text-lg " +
+                    (activePage === link.name ? "text-cyan-400" : "text-white/90 hover:text-cyan-400")
+                  }
+                  onClick={() => {
+                    onNavClick(link.name);
+                    setOpen(false);
+                  }}
+                >
+                  {link.name}
+                </button>
+              )}
             </li>
           ))}
         </motion.ul>
