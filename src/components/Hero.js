@@ -56,7 +56,7 @@ function Animated3DText() {
   );
 }
 
-export default function Hero() {
+export default function Hero({ onLaunchApp }) {
   return (
     <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex items-center justify-center min-h-[70vh]">
       {/* 3D Animated DarkNode Text (full background) */}
@@ -89,13 +89,13 @@ export default function Hero() {
             DarkNode is a next-gen DEX focused on blazing speed, liquidity, and user-first design — exclusively on Ethereum's Sepolia Testnet.
           </p>
           <div className="flex gap-4 mb-6">
-            <motion.a
-              href="#"
+            <motion.button
               className="px-8 py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition"
               whileHover={{ scale: 1.05 }}
+              onClick={onLaunchApp}
             >
               Launch App
-            </motion.a>
+            </motion.button>
             <motion.a
               href="#"
               className="px-8 py-3 rounded-xl font-bold text-lg bg-white/10 text-cyan-400 border border-cyan-400 shadow hover:bg-cyan-400/10 hover:text-white transition"
