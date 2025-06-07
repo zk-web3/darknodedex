@@ -1,143 +1,90 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { FiZap, FiLayers, FiShield, FiTrendingUp } from "react-icons/fi";
 
 function Animated3DText() {
-  // Animate X, Y, Z, and skew in a loop
   return (
     <motion.div
-      className="absolute inset-0 w-full h-full z-0 pointer-events-none select-none flex items-center justify-center"
-      initial={{ rotateX: 0, rotateY: 0, rotateZ: 0, skewY: 0 }}
-      animate={{
-        rotateX: [0, 20, 0, -20, 0],
-        rotateY: [0, 0, 30, 0, -30, 0],
-        rotateZ: [0, 0, 0, 15, 0, -15, 0],
-        skewY: [0, 10, 0, -10, 0],
-      }}
-      transition={{
-        repeat: Infinity,
-        duration: 12,
-        ease: "easeInOut",
-      }}
-      style={{
-        fontSize: "8vw",
-        fontWeight: 900,
-        background: "linear-gradient(90deg, #bfc7cf 0%, #38bdf8 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        textShadow:
-          "0 0 64px #38bdf8, 0 0 32px #bfc7cf, 0 0 2px #fff, 0 0 128px #38bdf8",
-        opacity: 0.65,
-        letterSpacing: "0.1em",
-        lineHeight: 1,
-        whiteSpace: "nowrap",
-        userSelect: "none",
-        position: "absolute",
-        left: 0,
-        top: 0,
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="w-full flex items-center justify-center select-none mb-8"
+      initial={{ opacity: 0, y: -30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 1 }}
     >
       <span
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: -1,
-          background: "rgba(0,0,0,0.7)",
-          borderRadius: "2vw",
-          filter: "blur(8px)",
-        }}
-      />
-      DarkNode
+        className="text-[8vw] md:text-7xl font-extrabold bg-gradient-to-r from-cyan-400 via-white to-purple-500 bg-clip-text text-transparent drop-shadow-glow tracking-widest"
+        style={{ letterSpacing: "0.08em", lineHeight: 1 }}
+      >
+        DarkNode
+      </span>
     </motion.div>
   );
 }
 
 export default function Hero({ onLaunchApp }) {
   return (
-    <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex items-center justify-center min-h-[70vh]">
-      {/* 3D Animated DarkNode Text (full background) */}
+    <section className="relative w-full pt-24 pb-20 bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] overflow-hidden flex flex-col items-center min-h-[80vh] px-4">
+      {/* Animated DarkNode Text */}
       <Animated3DText />
-      {/* Animated Background Particles */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <motion.div
-          className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-0 right-0 w-[32rem] h-[32rem] bg-purple-500/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
-          transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
-        />
-      </div>
-      <div className="relative z-10 w-full max-w-7xl flex flex-col md:flex-row items-center md:items-start justify-between gap-12 px-6">
-        {/* Left: Text */}
-        <motion.div
-          className="flex-1 flex flex-col items-start text-left"
-          initial={{ opacity: 0, x: -40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-glow mb-4">
-            Smarter Swaps.<br /> Built on Sepolia.
-          </h1>
-          <p className="text-lg md:text-2xl text-white/80 max-w-xl mb-8">
-            DarkNode is a next-gen DEX focused on blazing speed, liquidity, and user-first design — exclusively on Ethereum's Sepolia Testnet.
-          </p>
-          <div className="flex gap-4 mb-6">
-            <motion.button
-              className="px-8 py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition"
-              whileHover={{ scale: 1.05 }}
-              onClick={onLaunchApp}
-            >
-              Launch App
-            </motion.button>
-            <motion.a
-              href="#"
-              className="px-8 py-3 rounded-xl font-bold text-lg bg-white/10 text-cyan-400 border border-cyan-400 shadow hover:bg-cyan-400/10 hover:text-white transition"
-              whileHover={{ scale: 1.05 }}
-            >
-              Read Docs
-            </motion.a>
-          </div>
-        </motion.div>
-        {/* Right: Animated 3D Token Visuals (Placeholder) */}
-        <motion.div
-          className="flex-1 flex items-center justify-center w-full h-80 md:h-[28rem]"
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          <motion.div
-            className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center"
-            animate={{ rotate: [0, 8, -8, 0] }}
-            transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+      {/* Headline & Subtitle */}
+      <motion.div
+        className="max-w-2xl w-full flex flex-col items-center text-center mx-auto"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.2 }}
+      >
+        <h1 className="text-4xl md:text-6xl font-extrabold text-white drop-shadow-glow mb-4">
+          The Next-Gen Modular DEX
+        </h1>
+        <p className="text-lg md:text-2xl text-white/80 mb-8">
+          Experience blazing fast swaps, modular liquidity, and a futuristic DeFi UI. Built for the Ethereum Sepolia testnet.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 mb-10 w-full justify-center">
+          <motion.button
+            className="px-8 py-3 rounded-xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition"
+            whileHover={{ scale: 1.05 }}
+            onClick={onLaunchApp}
           >
-            {/* Glowing Card 1 */}
-            <motion.div
-              className="absolute left-0 top-0 w-40 h-40 bg-gradient-to-br from-cyan-400/40 to-purple-500/30 rounded-2xl shadow-2xl blur-xl"
-              animate={{ y: [0, 20, -20, 0], x: [0, 10, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
-            />
-            {/* Glowing Card 2 */}
-            <motion.div
-              className="absolute right-0 bottom-0 w-32 h-32 bg-gradient-to-br from-purple-400/40 to-cyan-500/30 rounded-2xl shadow-2xl blur-xl"
-              animate={{ y: [0, -20, 20, 0], x: [0, -10, 10, 0] }}
-              transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-            />
-            {/* Center Token Placeholder */}
-            <div className="relative z-10 w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-cyan-400 to-purple-500 rounded-full shadow-2xl flex items-center justify-center border-4 border-white/20">
-              <span className="text-5xl md:text-6xl font-extrabold text-white drop-shadow-glow select-none">
-                🟣
-              </span>
-            </div>
-          </motion.div>
-        </motion.div>
-      </div>
+            Launch App
+          </motion.button>
+          <motion.a
+            href="https://docs.darknode.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-8 py-3 rounded-xl font-bold text-lg bg-white/10 text-cyan-400 border border-cyan-400 shadow hover:bg-cyan-400/10 hover:text-white transition"
+            whileHover={{ scale: 1.05 }}
+          >
+            Read Docs
+          </motion.a>
+        </div>
+      </motion.div>
+      {/* Glassmorphic Feature Panel */}
+      <motion.div
+        className="relative z-10 mt-2 max-w-4xl w-full mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 bg-white/10 dark:bg-black/30 backdrop-blur-2xl rounded-3xl border border-cyan-400/20 shadow-2xl p-8"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.4 }}
+      >
+        <div className="flex flex-col items-center text-center gap-2">
+          <FiZap className="text-3xl text-cyan-400 drop-shadow-glow mb-2" />
+          <span className="text-lg font-semibold text-white">Lightning Swaps</span>
+          <span className="text-white/70 text-sm">Instant trades with ultra-low gas on Sepolia.</span>
+        </div>
+        <div className="flex flex-col items-center text-center gap-2">
+          <FiLayers className="text-3xl text-purple-400 drop-shadow-glow mb-2" />
+          <span className="text-lg font-semibold text-white">Modular Liquidity</span>
+          <span className="text-white/70 text-sm">Add, remove, or extend pools with ease.</span>
+        </div>
+        <div className="flex flex-col items-center text-center gap-2">
+          <FiShield className="text-3xl text-cyan-400 drop-shadow-glow mb-2" />
+          <span className="text-lg font-semibold text-white">Secure & Reliable</span>
+          <span className="text-white/70 text-sm">Audited contracts, built for safety and speed.</span>
+        </div>
+        <div className="flex flex-col items-center text-center gap-2">
+          <FiTrendingUp className="text-3xl text-purple-400 drop-shadow-glow mb-2" />
+          <span className="text-lg font-semibold text-white">Future-Ready</span>
+          <span className="text-white/70 text-sm">Designed for rapid upgrades and new features.</span>
+        </div>
+      </motion.div>
     </section>
   );
 } 
