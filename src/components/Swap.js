@@ -213,6 +213,14 @@ export default function Swap({ connectWallet, address, network, provider }) {
             />
           </div>
         </div>
+        {/* Live Swap Summary */}
+        <div className="mb-4 text-center text-cyan-300 text-base min-h-[24px]">
+          {amountIn && amountOut && !error && (
+            <span>
+              You will get <b>{parseFloat(amountOut).toFixed(6)} {outputToken.symbol}</b> for <b>{parseFloat(amountIn).toFixed(6)} {inputToken.symbol}</b>
+            </span>
+          )}
+        </div>
         {/* Slippage */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
@@ -232,7 +240,7 @@ export default function Swap({ connectWallet, address, network, provider }) {
         <button
           className="w-full py-3 rounded-2xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:from-cyan-400 hover:to-purple-500 transition text-white tracking-wide"
           onClick={handleSwap}
-          disabled={loading || !amountIn || !address}
+          disabled={loading || !amountIn || !address || !amountOut || !!error}
         >
           {loading ? "Swapping..." : "Swap"}
         </button>
