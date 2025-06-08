@@ -12,21 +12,10 @@ export const TOKENS = [
     logo: 'https://cryptologos.cc/logos/weth-logo.png'
   },
   {
-    symbol: 'USDT',
-    address: '', // Add your Base Sepolia test token address here
-    decimals: 6,
-    logo: 'https://cryptologos.cc/logos/tether-usdt-logo.png'
-  },
-  {
     symbol: 'USDC',
-    address: '', // Add your Base Sepolia test token address here
+    address: '0x9799b5edc1aa7d3fad350309b08df3f64914e244', // USDC from real V3 pool
     decimals: 6,
     logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png'
-  },
-  {
-    symbol: 'DAI',
-    address: '', // Add your Base Sepolia test token address here
-    decimals: 18,
-    logo: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png'
   }
+  // Add more tokens as you find their addresses
 ];

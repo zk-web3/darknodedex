@@ -1,3 +1,19 @@
+export const UNISWAP_V3_ROUTER = {
+  address: "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc4", // UniversalRouter on Base Sepolia
+  abi: [
+    // Minimal ABI for UniversalRouter swap (add more as needed)
+    {
+      "inputs": [
+        { "internalType": "bytes", "name": "commands", "type": "bytes" },
+        { "internalType": "bytes[]", "name": "inputs", "type": "bytes[]" }
+      ],
+      "name": "execute",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  ]
+};
 export const UNISWAP_ROUTER = {
   address: "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24",
   abi: [

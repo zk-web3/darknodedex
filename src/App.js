@@ -59,6 +59,17 @@ export default function App() {
           return;
         }
       }
+      if (net.chainId !== 84532) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x14A34" }], // Base Sepolia
+          });
+        } catch (e) {
+          alert("User rejected the request to switch to Base Sepolia network.");
+          return;
+        }
+      }
       setProvider(prov);
       setSigner(prov.getSigner());
       setAddress(await prov.getSigner().getAddress());
@@ -142,4 +153,4 @@ export default function App() {
       )}
     </div>
   );
-} 
+}
