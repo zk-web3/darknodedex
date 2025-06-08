@@ -4,7 +4,7 @@ import { TOKENS } from "../utils/tokens";
 import { UNISWAP_ROUTER } from "../utils/uniswap";
 import { FiSettings } from "react-icons/fi";
 
-export default function Swap({ onOpenSettings, onOpenTokenList, onConnectWallet }) {
+export default function Swap({ onOpenSettings, onOpenTokenList }) {
   const [provider, setProvider] = useState();
   const [signer, setSigner] = useState();
   const [address, setAddress] = useState("");
