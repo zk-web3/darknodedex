@@ -3,9 +3,11 @@ import { ethers } from "ethers";
 import { TOKENS } from "../utils/tokens";
 import { UNISWAP_ROUTER } from "../utils/uniswap";
 import { FiSettings } from "react-icons/fi";
-import Modal from "./Modal";
 
-export default function Swap({ connectWallet, address, network, provider }) {
+export default function Swap({ onOpenSettings, onOpenTokenList, onConnectWallet }) {
+  const [provider, setProvider] = useState();
+  const [signer, setSigner] = useState();
+  const [address, setAddress] = useState("");
   const [inputToken, setInputToken] = useState(TOKENS[0]);
   const [outputToken, setOutputToken] = useState(TOKENS[2]);
   const [amountIn, setAmountIn] = useState("");
@@ -14,30 +16,16 @@ export default function Swap({ connectWallet, address, network, provider }) {
   const [loading, setLoading] = useState(false);
   const [txHash, setTxHash] = useState("");
   const [error, setError] = useState("");
-  const [balance, setBalance] = useState("");
-  const [modal, setModal] = useState({ open: false, title: '', message: '', link: '' });
 
-  // Load balance for input token
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (!provider || !address || !inputToken) return setBalance("");
-      try {
-        if (inputToken.symbol === "ETH") {
-          const bal = await provider.getBalance(address);
-          setBalance(ethers.utils.formatEther(bal));
-        } else {
-          const token = new ethers.Contract(inputToken.address, [
-            "function balanceOf(address) view returns (uint256)"
-          ], provider);
-          const bal = await token.balanceOf(address);
-          setBalance(ethers.utils.formatUnits(bal, inputToken.decimals));
-        }
-      } catch {
-        setBalance("");
-      }
-    };
-    fetchBalance();
-  }, [provider, address, inputToken]);
+  // Connect wallet
+  const connectWallet = async () => {
+    if (!window.ethereum) return alert("Install MetaMask!");
+    const prov = new ethers.providers.Web3Provider(window.ethereum);
+    await prov.send("eth_requestAccounts", []);
+    setProvider(prov);
+    setSigner(prov.getSigner());
+    setAddress(await prov.getSigner().getAddress());
+  };
 
   // Get output amount (Uniswap getAmountsOut)
   useEffect(() => {
@@ -46,20 +34,15 @@ export default function Swap({ connectWallet, address, network, provider }) {
       if (!amountIn || !inputToken || !outputToken || !provider) return setAmountOut("");
       try {
         const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, provider);
-        let path;
-        if (inputToken.symbol === "ETH") {
-          path = [TOKENS[1].address, outputToken.address]; // ETH -> WETH -> output
-        } else if (outputToken.symbol === "ETH") {
-          path = [inputToken.address, TOKENS[1].address]; // input -> WETH -> ETH
-        } else {
-          path = [inputToken.address, outputToken.address];
-        }
+        const path = inputToken.symbol === "ETH"
+          ? [TOKENS[1].address, outputToken.address] // ETH -> WETH -> output
+          : [inputToken.address, outputToken.address];
         const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
         const amounts = await router.getAmountsOut(amtIn, path);
         setAmountOut(ethers.utils.formatUnits(amounts[amounts.length - 1], outputToken.decimals));
       } catch (e) {
         setAmountOut("");
-        setError("No liquidity or invalid pair. Try a different token or amount.");
+        setError("No liquidity or invalid pair.");
       }
     };
     fetchAmountOut();
@@ -67,21 +50,15 @@ export default function Swap({ connectWallet, address, network, provider }) {
 
   // Swap function
   const handleSwap = async () => {
-    if (!provider || !address) return connectWallet();
+    if (!signer) return connectWallet();
     setLoading(true);
     setTxHash("");
     setError("");
     try {
-      const signer = provider.getSigner();
       const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, signer);
-      let path;
-      if (inputToken.symbol === "ETH") {
-        path = [TOKENS[1].address, outputToken.address];
-      } else if (outputToken.symbol === "ETH") {
-        path = [inputToken.address, TOKENS[1].address];
-      } else {
-        path = [inputToken.address, outputToken.address];
-      }
+      const path = inputToken.symbol === "ETH"
+        ? [TOKENS[1].address, outputToken.address]
+        : [inputToken.address, outputToken.address];
       const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
       const amtOutMin = amountOut
         ? ethers.utils.parseUnits(
@@ -129,29 +106,9 @@ export default function Swap({ connectWallet, address, network, provider }) {
       setTxHash(tx.hash);
       await tx.wait();
       setLoading(false);
-      setModal({
-        open: true,
-        title: "Swap Successful!",
-        message: `Your swap was successful!`,
-        link: `https://sepolia.etherscan.io/tx/${tx.hash}`
-      });
+      alert("Swap successful!");
     } catch (e) {
       setLoading(false);
-      if (e.code === 4001) {
-        setModal({
-          open: true,
-          title: "Transaction Cancelled",
-          message: "User cancelled the request in MetaMask.",
-          link: ""
-        });
-      } else {
-        setModal({
-          open: true,
-          title: "Swap Failed",
-          message: e.message,
-          link: ""
-        });
-      }
       setError("Swap failed: " + e.message);
     }
   };
@@ -162,33 +119,24 @@ export default function Swap({ connectWallet, address, network, provider }) {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-white tracking-wide">Swap</h2>
           <button
-            className="px-4 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg hover:from-cyan-400 hover:to-purple-400 transition"
-            onClick={connectWallet}
+            className="p-2 rounded-full hover:bg-cyan-500/20 transition"
+            onClick={onOpenSettings}
+            aria-label="Settings"
           >
-            {address ? `Connected: ${address.slice(0, 6)}...` : "Connect Wallet"}
+            <FiSettings className="text-cyan-400 text-xl" />
           </button>
-        </div>
-        <div className="mb-2 text-white/80 text-sm">
-          {address && (
-            <>
-              <span>Network: {network?.name === "sepolia" ? "Sepolia" : <span className="text-red-400">Wrong Network</span>}</span>
-              <br />
-              <span>Balance: {balance ? `${parseFloat(balance).toFixed(4)} ${inputToken.symbol}` : "--"}</span>
-            </>
-          )}
         </div>
         {/* Token Input */}
         <div className="mb-4">
           <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
-            <select
-              className="bg-transparent text-cyan-300 font-semibold text-base outline-none"
-              value={inputToken.symbol}
-              onChange={e => setInputToken(TOKENS.find(t => t.symbol === e.target.value))}
+            <button
+              className="flex items-center gap-2 px-3 py-1 rounded-lg bg-cyan-400/10 hover:bg-cyan-400/20 transition text-cyan-300 font-semibold text-base backdrop-blur"
+              onClick={() => onOpenTokenList('input')}
             >
-              {TOKENS.map(t => <option key={t.symbol} value={t.symbol}>{t.symbol}</option>)}
-            </select>
+              <span className="blur-sm select-none">Token</span>
+            </button>
             <input
-              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
+              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32 blur-sm select-none"
               placeholder="0.00"
               value={amountIn}
               onChange={e => setAmountIn(e.target.value)}
@@ -198,31 +146,26 @@ export default function Swap({ connectWallet, address, network, provider }) {
         {/* Token Output */}
         <div className="mb-6">
           <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
-            <select
-              className="bg-transparent text-cyan-300 font-semibold text-base outline-none"
-              value={outputToken.symbol}
-              onChange={e => setOutputToken(TOKENS.find(t => t.symbol === e.target.value))}
+            <button
+              className="flex items-center gap-2 px-3 py-1 rounded-lg bg-cyan-400/10 hover:bg-cyan-400/20 transition text-cyan-300 font-semibold text-base backdrop-blur"
+              onClick={() => onOpenTokenList('output')}
             >
-              {TOKENS.map(t => <option key={t.symbol} value={t.symbol}>{t.symbol}</option>)}
-            </select>
+              <span className="blur-sm select-none">Token</span>
+            </button>
             <input
-              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
+              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32 blur-sm select-none"
               placeholder="0.00"
               value={amountOut}
               readOnly
             />
           </div>
         </div>
-        {/* Live Swap Summary */}
-        <div className="mb-4 text-center text-cyan-300 text-base min-h-[24px]">
-          {amountIn && amountOut && !error && (
-            <span>
-              You will get <b>{parseFloat(amountOut).toFixed(6)} {outputToken.symbol}</b> for <b>{parseFloat(amountIn).toFixed(6)} {inputToken.symbol}</b>
-            </span>
-          )}
-        </div>
-        {/* Slippage */}
+        {/* Gas & Slippage */}
         <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-cyan-400/80 text-sm font-medium">Gas</span>
+            <span className="w-12 h-5 bg-cyan-400/10 rounded-lg blur-sm" />
+          </div>
           <div className="flex items-center gap-3">
             <span className="text-cyan-400/80 text-sm font-medium">Slippage</span>
             <input
@@ -232,25 +175,20 @@ export default function Swap({ connectWallet, address, network, provider }) {
               max={5}
               step={0.1}
               onChange={e => setSlippage(Number(e.target.value))}
-              className="w-12 h-5 bg-cyan-400/10 rounded-lg"
+              className="w-12 h-5 bg-cyan-400/10 rounded-lg blur-sm"
             />
           </div>
         </div>
-        {/* Swap CTA */}
+        {/* Connect Wallet / Swap CTA */}
         <button
           className="w-full py-3 rounded-2xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:from-cyan-400 hover:to-purple-500 transition text-white tracking-wide"
           onClick={handleSwap}
-          disabled={loading || !amountIn || !address || !amountOut || !!error}
+          disabled={loading || !amountIn || !address}
         >
           {loading ? "Swapping..." : "Swap"}
         </button>
         {txHash && <div className="mt-4 text-center text-sm text-white/80">Tx: <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-cyan-400">{txHash.slice(0, 10)}...</a></div>}
         {error && <div className="mt-4 text-center text-sm text-red-400">{error}</div>}
-        <Modal open={modal.open} onClose={() => setModal({ ...modal, open: false })}>
-          <h2 className="text-xl font-bold mb-2">{modal.title}</h2>
-          <p className="mb-4">{modal.message}</p>
-          {modal.link && <a href={modal.link} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline">View on Sepolia Explorer</a>}
-        </Modal>
       </div>
     </section>
   );
