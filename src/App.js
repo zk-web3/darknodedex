@@ -100,6 +100,13 @@ export default function App() {
 
   const handleLaunchApp = () => setPage("Swap");
 
+  const handleDisconnect = () => {
+    setProvider(undefined);
+    setSigner(undefined);
+    setAddress("");
+    setNetwork(undefined);
+  };
+
   return (
     <div className="min-h-screen w-full font-sans bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] text-white relative overflow-x-hidden">
       <Navbar
@@ -108,6 +115,7 @@ export default function App() {
         activePage={page}
         address={address}
         network={network}
+        onDisconnect={handleDisconnect}
       />
       {page === "Home" && <Hero onLaunchApp={handleLaunchApp} />}
       {page === "Swap" && (

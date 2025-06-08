@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { FiChevronDown, FiCopy, FiExternalLink, FiLogOut } from "react-icons/fi";
 
 const links = [
   { name: "Home", href: "#" },
@@ -9,8 +10,26 @@ const links = [
   { name: "Docs", href: "https://docs.darknode.xyz", external: true },
 ];
 
-export default function Navbar({ onNavClick, onWalletClick, activePage, address }) {
+export default function Navbar({ onNavClick, onWalletClick, activePage, address, onDisconnect }) {
   const [open, setOpen] = useState(false);
+  const [walletMenu, setWalletMenu] = useState(false);
+  const walletRef = React.useRef();
+
+  // Close wallet menu on outside click
+  React.useEffect(() => {
+    function handleClick(e) {
+      if (walletRef.current && !walletRef.current.contains(e.target)) {
+        setWalletMenu(false);
+      }
+    }
+    if (walletMenu) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [walletMenu]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+  };
+
   return (
     <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/10 dark:bg-black/40 border-b border-white/10 shadow-lg">
       <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
@@ -61,9 +80,43 @@ export default function Navbar({ onNavClick, onWalletClick, activePage, address 
             </li>
           ))}
         </ul>
-        <button className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur border border-cyan-400/30" onClick={onWalletClick}>
-          {address ? `Connected: ${address.slice(0, 6)}...` : "Connect Wallet"}
-        </button>
+        {address ? (
+          <div className="relative" ref={walletRef}>
+            <button
+              className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur border border-cyan-400/30 flex items-center gap-2"
+              onClick={() => setWalletMenu((v) => !v)}
+            >
+              {`0x${address.slice(2, 8)}...${address.slice(-4)}`}
+              <FiChevronDown />
+            </button>
+            {walletMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-black/90 border border-cyan-400/20 rounded-xl shadow-lg z-50 py-2">
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-cyan-300 hover:bg-cyan-400/10 transition text-left"
+                  onClick={() => window.open(`https://sepolia.etherscan.io/address/${address}`, "_blank")}
+                >
+                  <FiExternalLink /> View on Explorer
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-cyan-300 hover:bg-cyan-400/10 transition text-left"
+                  onClick={handleCopy}
+                >
+                  <FiCopy /> Copy Address
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-400/10 transition text-left"
+                  onClick={() => { setWalletMenu(false); onDisconnect(); }}
+                >
+                  <FiLogOut /> Disconnect Wallet
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur border border-cyan-400/30" onClick={onWalletClick}>
+            Connect Wallet
+          </button>
+        )}
         {/* Mobile menu button */}
         <button
           className="md:hidden ml-2 text-cyan-400 text-2xl focus:outline-none"
