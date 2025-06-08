@@ -66,6 +66,15 @@ export default function App() {
     } catch (err) {
       if (err.code === 4001) {
         alert("User rejected the connection request.");
+      } else if (
+        err.code === 'NETWORK_ERROR' &&
+        err.message &&
+        err.message.toLowerCase().includes('underlying network changed')
+      ) {
+        alert(
+          "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
+        );
+        setTimeout(() => window.location.reload(), 1200);
       } else {
         alert("MetaMask connection failed: " + err.message);
       }
