@@ -1,5 +1,5 @@
 export const UNISWAP_ROUTER = {
-  address: '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45', // Uniswap V3 router on Sepolia
+  address: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap V2 router on Sepolia
   abi: [
     // --- UniswapV2Router02 ABI (truncated for brevity, use full ABI in production) ---
     {
