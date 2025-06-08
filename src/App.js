@@ -37,28 +37,39 @@ export default function App() {
     setPage(name);
   };
 
-  // Global wallet connect logic
+  // Global wallet connect logic with error handling
   const connectWallet = async () => {
-    if (!window.ethereum) return alert("Install MetaMask!");
-    const prov = new ethers.providers.Web3Provider(window.ethereum);
-    await prov.send("eth_requestAccounts", []);
-    const net = await prov.getNetwork();
-    if (net.chainId !== 11155111) {
-      // Sepolia = 11155111
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0xaa36a7" }], // Sepolia
-        });
-      } catch (e) {
-        alert("Please switch to Sepolia network in MetaMask.");
-        return;
+    if (!window.ethereum) {
+      alert("MetaMask not detected! Please install MetaMask extension.");
+      return;
+    }
+    try {
+      const prov = new ethers.providers.Web3Provider(window.ethereum);
+      await prov.send("eth_requestAccounts", []);
+      const net = await prov.getNetwork();
+      if (net.chainId !== 11155111) {
+        // Sepolia = 11155111
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0xaa36a7" }], // Sepolia
+          });
+        } catch (e) {
+          alert("User rejected the request to switch to Sepolia network.");
+          return;
+        }
+      }
+      setProvider(prov);
+      setSigner(prov.getSigner());
+      setAddress(await prov.getSigner().getAddress());
+      setNetwork(await prov.getNetwork());
+    } catch (err) {
+      if (err.code === 4001) {
+        alert("User rejected the connection request.");
+      } else {
+        alert("MetaMask connection failed: " + err.message);
       }
     }
-    setProvider(prov);
-    setSigner(prov.getSigner());
-    setAddress(await prov.getSigner().getAddress());
-    setNetwork(await prov.getNetwork());
   };
 
   // Listen for account/network changes
