@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { TOKENS } from "../utils/tokens";
 import { UNISWAP_ROUTER } from "../utils/uniswap";
 import { FiSettings } from "react-icons/fi";
+import Modal from "./Modal";
 
 export default function Swap({ connectWallet, address, network, provider }) {
   const [inputToken, setInputToken] = useState(TOKENS[0]);
@@ -14,6 +15,7 @@ export default function Swap({ connectWallet, address, network, provider }) {
   const [txHash, setTxHash] = useState("");
   const [error, setError] = useState("");
   const [balance, setBalance] = useState("");
+  const [modal, setModal] = useState({ open: false, title: '', message: '', link: '' });
 
   // Load balance for input token
   useEffect(() => {
@@ -44,15 +46,20 @@ export default function Swap({ connectWallet, address, network, provider }) {
       if (!amountIn || !inputToken || !outputToken || !provider) return setAmountOut("");
       try {
         const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, provider);
-        const path = inputToken.symbol === "ETH"
-          ? [TOKENS[1].address, outputToken.address] // ETH -> WETH -> output
-          : [inputToken.address, outputToken.address];
+        let path;
+        if (inputToken.symbol === "ETH") {
+          path = [TOKENS[1].address, outputToken.address]; // ETH -> WETH -> output
+        } else if (outputToken.symbol === "ETH") {
+          path = [inputToken.address, TOKENS[1].address]; // input -> WETH -> ETH
+        } else {
+          path = [inputToken.address, outputToken.address];
+        }
         const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
         const amounts = await router.getAmountsOut(amtIn, path);
         setAmountOut(ethers.utils.formatUnits(amounts[amounts.length - 1], outputToken.decimals));
       } catch (e) {
         setAmountOut("");
-        setError("No liquidity or invalid pair.");
+        setError("No liquidity or invalid pair. Try a different token or amount.");
       }
     };
     fetchAmountOut();
@@ -67,9 +74,14 @@ export default function Swap({ connectWallet, address, network, provider }) {
     try {
       const signer = provider.getSigner();
       const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, signer);
-      const path = inputToken.symbol === "ETH"
-        ? [TOKENS[1].address, outputToken.address]
-        : [inputToken.address, outputToken.address];
+      let path;
+      if (inputToken.symbol === "ETH") {
+        path = [TOKENS[1].address, outputToken.address];
+      } else if (outputToken.symbol === "ETH") {
+        path = [inputToken.address, TOKENS[1].address];
+      } else {
+        path = [inputToken.address, outputToken.address];
+      }
       const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
       const amtOutMin = amountOut
         ? ethers.utils.parseUnits(
@@ -117,9 +129,29 @@ export default function Swap({ connectWallet, address, network, provider }) {
       setTxHash(tx.hash);
       await tx.wait();
       setLoading(false);
-      alert("Swap successful!");
+      setModal({
+        open: true,
+        title: "Swap Successful!",
+        message: `Your swap was successful!`,
+        link: `https://sepolia.etherscan.io/tx/${tx.hash}`
+      });
     } catch (e) {
       setLoading(false);
+      if (e.code === 4001) {
+        setModal({
+          open: true,
+          title: "Transaction Cancelled",
+          message: "User cancelled the request in MetaMask.",
+          link: ""
+        });
+      } else {
+        setModal({
+          open: true,
+          title: "Swap Failed",
+          message: e.message,
+          link: ""
+        });
+      }
       setError("Swap failed: " + e.message);
     }
   };
@@ -206,6 +238,11 @@ export default function Swap({ connectWallet, address, network, provider }) {
         </button>
         {txHash && <div className="mt-4 text-center text-sm text-white/80">Tx: <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-cyan-400">{txHash.slice(0, 10)}...</a></div>}
         {error && <div className="mt-4 text-center text-sm text-red-400">{error}</div>}
+        <Modal open={modal.open} onClose={() => setModal({ ...modal, open: false })}>
+          <h2 className="text-xl font-bold mb-2">{modal.title}</h2>
+          <p className="mb-4">{modal.message}</p>
+          {modal.link && <a href={modal.link} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline">View on Sepolia Explorer</a>}
+        </Modal>
       </div>
     </section>
   );
