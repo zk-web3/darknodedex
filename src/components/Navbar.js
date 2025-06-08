@@ -9,7 +9,7 @@ const links = [
   { name: "Docs", href: "https://docs.darknode.xyz", external: true },
 ];
 
-export default function Navbar({ onNavClick, onWalletClick, activePage }) {
+export default function Navbar({ onNavClick, onWalletClick, activePage, address }) {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-white/10 dark:bg-black/40 border-b border-white/10 shadow-lg">
@@ -62,7 +62,7 @@ export default function Navbar({ onNavClick, onWalletClick, activePage }) {
           ))}
         </ul>
         <button className="ml-4 px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-400 transition backdrop-blur border border-cyan-400/30" onClick={onWalletClick}>
-          Connect Wallet
+          {address ? `Connected: ${address.slice(0, 6)}...` : "Connect Wallet"}
         </button>
         {/* Mobile menu button */}
         <button

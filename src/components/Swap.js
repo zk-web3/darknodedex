@@ -4,11 +4,7 @@ import { TOKENS } from "../utils/tokens";
 import { UNISWAP_ROUTER } from "../utils/uniswap";
 import { FiSettings } from "react-icons/fi";
 
-export default function Swap({ onOpenSettings, onOpenTokenList }) {
-  const [provider, setProvider] = useState();
-  const [signer, setSigner] = useState();
-  const [address, setAddress] = useState("");
-  const [network, setNetwork] = useState();
+export default function Swap({ connectWallet, address, network, provider }) {
   const [inputToken, setInputToken] = useState(TOKENS[0]);
   const [outputToken, setOutputToken] = useState(TOKENS[2]);
   const [amountIn, setAmountIn] = useState("");
@@ -18,30 +14,6 @@ export default function Swap({ onOpenSettings, onOpenTokenList }) {
   const [txHash, setTxHash] = useState("");
   const [error, setError] = useState("");
   const [balance, setBalance] = useState("");
-
-  // Connect wallet & force Sepolia
-  const connectWallet = async () => {
-    if (!window.ethereum) return alert("Install MetaMask!");
-    const prov = new ethers.providers.Web3Provider(window.ethereum);
-    await prov.send("eth_requestAccounts", []);
-    const net = await prov.getNetwork();
-    if (net.chainId !== 11155111) {
-      // Sepolia = 11155111
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0xaa36a7" }], // Sepolia
-        });
-      } catch (e) {
-        setError("Please switch to Sepolia network in MetaMask.");
-        return;
-      }
-    }
-    setProvider(prov);
-    setSigner(prov.getSigner());
-    setAddress(await prov.getSigner().getAddress());
-    setNetwork(await prov.getNetwork());
-  };
 
   // Load balance for input token
   useEffect(() => {
@@ -88,11 +60,12 @@ export default function Swap({ onOpenSettings, onOpenTokenList }) {
 
   // Swap function
   const handleSwap = async () => {
-    if (!signer) return connectWallet();
+    if (!provider || !address) return connectWallet();
     setLoading(true);
     setTxHash("");
     setError("");
     try {
+      const signer = provider.getSigner();
       const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, signer);
       const path = inputToken.symbol === "ETH"
         ? [TOKENS[1].address, outputToken.address]

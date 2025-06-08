@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Swap from "./components/Swap";
@@ -7,6 +7,7 @@ import Faucet from "./components/Faucet";
 import TokenListDrawer from "./components/TokenListDrawer";
 import SettingsModal from "./components/SettingsModal";
 import Modal from "./components/Modal";
+import { ethers } from "ethers";
 
 const PAGES = ["Home", "Swap", "Liquidity", "Faucet"];
 
@@ -15,7 +16,10 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [drawerType, setDrawerType] = useState(null);
-  const [devModalOpen, setDevModalOpen] = useState(false);
+  const [provider, setProvider] = useState();
+  const [signer, setSigner] = useState();
+  const [address, setAddress] = useState("");
+  const [network, setNetwork] = useState();
 
   const openDrawer = (type) => {
     setDrawerType(type);
@@ -33,20 +37,67 @@ export default function App() {
     setPage(name);
   };
 
-  const handleConnectWallet = () => setDevModalOpen(true);
-  const closeDevModal = () => setDevModalOpen(false);
+  // Global wallet connect logic
+  const connectWallet = async () => {
+    if (!window.ethereum) return alert("Install MetaMask!");
+    const prov = new ethers.providers.Web3Provider(window.ethereum);
+    await prov.send("eth_requestAccounts", []);
+    const net = await prov.getNetwork();
+    if (net.chainId !== 11155111) {
+      // Sepolia = 11155111
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0xaa36a7" }], // Sepolia
+        });
+      } catch (e) {
+        alert("Please switch to Sepolia network in MetaMask.");
+        return;
+      }
+    }
+    setProvider(prov);
+    setSigner(prov.getSigner());
+    setAddress(await prov.getSigner().getAddress());
+    setNetwork(await prov.getNetwork());
+  };
+
+  // Listen for account/network changes
+  useEffect(() => {
+    if (!window.ethereum) return;
+    const handleAccountsChanged = (accounts) => {
+      setAddress(accounts[0] || "");
+    };
+    const handleChainChanged = () => {
+      window.location.reload();
+    };
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    window.ethereum.on("chainChanged", handleChainChanged);
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
+    };
+  }, []);
 
   const handleLaunchApp = () => setPage("Swap");
 
   return (
     <div className="min-h-screen w-full font-sans bg-gradient-to-br from-[#0d0d0d] via-[#23272f] to-[#23272f] text-white relative overflow-x-hidden">
-      <Navbar onNavClick={handleNavClick} onWalletClick={handleConnectWallet} activePage={page} />
+      <Navbar
+        onNavClick={handleNavClick}
+        onWalletClick={connectWallet}
+        activePage={page}
+        address={address}
+        network={network}
+      />
       {page === "Home" && <Hero onLaunchApp={handleLaunchApp} />}
       {page === "Swap" && (
         <Swap
           onOpenSettings={openSettings}
           onOpenTokenList={openDrawer}
-          onConnectWallet={handleConnectWallet}
+          connectWallet={connectWallet}
+          address={address}
+          network={network}
+          provider={provider}
         />
       )}
       {page === "Liquidity" && (
@@ -61,10 +112,6 @@ export default function App() {
           <SettingsModal open={settingsOpen} onClose={closeSettings} />
         </>
       )}
-      <Modal open={devModalOpen} onClose={closeDevModal}>
-        <h2 className="text-2xl font-bold mb-2">App is under development</h2>
-        <p className="text-white/80">Wallet connection will be available soon.</p>
-      </Modal>
     </div>
   );
 } 
