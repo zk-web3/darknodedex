@@ -120,3 +120,10 @@ export const UNISWAP_ROUTER = {
     }
   ]
 };
+export const UNISWAP_QUOTER = {
+  address: "0x2e9d63788249371f1dfc918a52f8d799f4a38c94", // Uniswap V3 Quoter address on Base Sepolia
+  abi: [
+    // Minimal ABI for quoteExactInputSingle, add more as needed
+    "function quoteExactInputSingle(address,address,uint24,uint256,uint160) external returns (uint256)"
+  ]
+};
