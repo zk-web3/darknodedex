@@ -38,56 +38,91 @@ export default function App() {
   };
 
   // Global wallet connect logic with error handling
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      alert("MetaMask not detected! Please install MetaMask extension.");
-      return;
+  const BASE_SEPOLIA_CHAIN_ID = "0x14A34"; // 84532 in hex
+  const BASE_SEPOLIA_PARAMS = {
+    chainId: BASE_SEPOLIA_CHAIN_ID,
+    chainName: "Base Sepolia",
+    nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://sepolia.base.org"],
+    blockExplorerUrls: ["https://sepolia.basescan.org"]
+  };
+  
+  async function switchToBaseSepolia() {
+    if (window.ethereum) {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: BASE_SEPOLIA_CHAIN_ID }]
+        });
+      } catch (switchError) {
+        // If the chain is not added, add it
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [BASE_SEPOLIA_PARAMS]
+          });
+        }
+      }
     }
-    try {
-      const prov = new ethers.providers.Web3Provider(window.ethereum);
-      await prov.send("eth_requestAccounts", []);
-      const net = await prov.getNetwork();
-      if (net.chainId !== 11155111) {
-        // Sepolia = 11155111
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0xaa36a7" }], // Sepolia
-          });
-        } catch (e) {
-          alert("User rejected the request to switch to Sepolia network.");
-          return;
-        }
+  }
+  
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (chainId !== BASE_SEPOLIA_CHAIN_ID) {
+        await switchToBaseSepolia();
+        return; // Prevent connecting on wrong network
       }
-      if (net.chainId !== 84532) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x14A34" }], // Base Sepolia
-          });
-        } catch (e) {
-          alert("User rejected the request to switch to Base Sepolia network.");
-          return;
-        }
+      if (!window.ethereum) {
+        alert("MetaMask not detected! Please install MetaMask extension.");
+        return;
       }
-      setProvider(prov);
-      setSigner(prov.getSigner());
-      setAddress(await prov.getSigner().getAddress());
-      setNetwork(await prov.getNetwork());
-    } catch (err) {
-      if (err.code === 4001) {
-        alert("User rejected the connection request.");
-      } else if (
-        err.code === 'NETWORK_ERROR' &&
-        err.message &&
-        err.message.toLowerCase().includes('underlying network changed')
-      ) {
-        alert(
-          "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
-        );
-        setTimeout(() => window.location.reload(), 1200);
-      } else {
-        alert("MetaMask connection failed: " + err.message);
+      try {
+        const prov = new ethers.providers.Web3Provider(window.ethereum);
+        await prov.send("eth_requestAccounts", []);
+        const net = await prov.getNetwork();
+        if (net.chainId !== 11155111) {
+          // Sepolia = 11155111
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0xaa36a7" }], // Sepolia
+            });
+          } catch (e) {
+            alert("User rejected the request to switch to Sepolia network.");
+            return;
+          }
+        }
+        if (net.chainId !== 84532) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: "0x14A34" }], // Base Sepolia
+            });
+          } catch (e) {
+            alert("User rejected the request to switch to Base Sepolia network.");
+            return;
+          }
+        }
+        setProvider(prov);
+        setSigner(prov.getSigner());
+        setAddress(await prov.getSigner().getAddress());
+        setNetwork(await prov.getNetwork());
+      } catch (err) {
+        if (err.code === 4001) {
+          alert("User rejected the connection request.");
+        } else if (
+          err.code === 'NETWORK_ERROR' &&
+          err.message &&
+          err.message.toLowerCase().includes('underlying network changed')
+        ) {
+          alert(
+            "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
+          );
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          alert("MetaMask connection failed: " + err.message);
+        }
       }
     }
   };
