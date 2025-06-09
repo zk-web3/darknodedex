@@ -67,62 +67,45 @@ export default function App() {
   }
   
   const connectWallet = async () => {
-    if (window.ethereum) {
+    if (!window.ethereum) {
+      alert("MetaMask not detected! Please install MetaMask extension.");
+      return;
+    }
+    
+    try {
+      const prov = new ethers.providers.Web3Provider(window.ethereum);
+      await prov.send("eth_requestAccounts", []);
+      
+      // Check and switch to Base Sepolia network
       const chainId = await window.ethereum.request({ method: "eth_chainId" });
       if (chainId !== BASE_SEPOLIA_CHAIN_ID) {
         await switchToBaseSepolia();
-        return; // Prevent connecting on wrong network
-      }
-      if (!window.ethereum) {
-        alert("MetaMask not detected! Please install MetaMask extension.");
-        return;
-      }
-      try {
-        const prov = new ethers.providers.Web3Provider(window.ethereum);
-        await prov.send("eth_requestAccounts", []);
-        const net = await prov.getNetwork();
-        if (net.chainId !== 11155111) {
-          // Sepolia = 11155111
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: "0xaa36a7" }], // Sepolia
-            });
-          } catch (e) {
-            alert("User rejected the request to switch to Sepolia network.");
-            return;
-          }
-        }
-        if (net.chainId !== 84532) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: "0x14A34" }], // Base Sepolia
-            });
-          } catch (e) {
-            alert("User rejected the request to switch to Base Sepolia network.");
-            return;
-          }
-        }
+        // Re-get provider after network switch
+        const newProv = new ethers.providers.Web3Provider(window.ethereum);
+        setProvider(newProv);
+        setSigner(newProv.getSigner());
+        setAddress(await newProv.getSigner().getAddress());
+        setNetwork(await newProv.getNetwork());
+      } else {
         setProvider(prov);
         setSigner(prov.getSigner());
         setAddress(await prov.getSigner().getAddress());
         setNetwork(await prov.getNetwork());
-      } catch (err) {
-        if (err.code === 4001) {
-          alert("User rejected the connection request.");
-        } else if (
-          err.code === 'NETWORK_ERROR' &&
-          err.message &&
-          err.message.toLowerCase().includes('underlying network changed')
-        ) {
-          alert(
-            "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
-          );
-          setTimeout(() => window.location.reload(), 1200);
-        } else {
-          alert("MetaMask connection failed: " + err.message);
-        }
+      }
+    } catch (err) {
+      if (err.code === 4001) {
+        alert("User rejected the connection request.");
+      } else if (
+        err.code === 'NETWORK_ERROR' &&
+        err.message &&
+        err.message.toLowerCase().includes('underlying network changed')
+      ) {
+        alert(
+          "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
+        );
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        alert("MetaMask connection failed: " + err.message);
       }
     }
   };
@@ -130,14 +113,26 @@ export default function App() {
   // Listen for account/network changes
   useEffect(() => {
     if (!window.ethereum) return;
+    
     const handleAccountsChanged = (accounts) => {
-      setAddress(accounts[0] || "");
+      if (accounts.length === 0) {
+        // User disconnected all accounts
+        setProvider(undefined);
+        setSigner(undefined);
+        setAddress("");
+        setNetwork(undefined);
+      } else {
+        setAddress(accounts[0]);
+      }
     };
+    
     const handleChainChanged = () => {
       window.location.reload();
     };
+    
     window.ethereum.on("accountsChanged", handleAccountsChanged);
     window.ethereum.on("chainChanged", handleChainChanged);
+    
     return () => {
       window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
       window.ethereum.removeListener("chainChanged", handleChainChanged);
@@ -172,6 +167,7 @@ export default function App() {
           address={address}
           network={network}
           provider={provider}
+          signer={signer}
         />
       )}
       {page === "Liquidity" && (
