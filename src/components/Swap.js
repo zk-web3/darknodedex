@@ -32,21 +32,33 @@ export default function Swap({
     
     try {
       const newBalances = {};
+      
+      // Get Base Sepolia ETH balance
+      const ethBalance = await provider.getBalance(address);
+      newBalances["ETH"] = parseFloat(ethers.utils.formatEther(ethBalance)).toFixed(6);
+      
+      // Get other token balances
       for (let token of TOKENS) {
-        if (token.symbol === "ETH") {
-          const bal = await provider.getBalance(address);
-          newBalances[token.symbol] = ethers.utils.formatEther(bal);
-        } else {
-          const contract = new ethers.Contract(
-            token.address, 
-            ["function balanceOf(address) view returns (uint256)"], 
-            provider
-          );
-          const bal = await contract.balanceOf(address);
-          newBalances[token.symbol] = ethers.utils.formatUnits(bal, token.decimals);
+        if (token.symbol !== "ETH" && token.address) {
+          try {
+            const contract = new ethers.Contract(
+              token.address, 
+              ["function balanceOf(address) view returns (uint256)"], 
+              provider
+            );
+            const bal = await contract.balanceOf(address);
+            newBalances[token.symbol] = parseFloat(
+              ethers.utils.formatUnits(bal, token.decimals)
+            ).toFixed(6);
+          } catch (err) {
+            console.warn(`Error fetching ${token.symbol} balance:`, err);
+            newBalances[token.symbol] = "0.00";
+          }
         }
       }
+      
       setBalances(newBalances);
+      console.log("Base Sepolia Balances:", newBalances);
     } catch (error) {
       console.error("Error fetching balances:", error);
     }
@@ -222,6 +234,17 @@ export default function Swap({
             <FiSettings className="text-cyan-400 text-xl" />
           </button>
         </div>
+
+        {isConnected && network && (
+          <div className="mb-4 text-center">
+            <div className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm inline-block">
+              Connected to Base Sepolia Testnet
+            </div>
+            <div className="text-white/70 text-xs mt-1">
+              Balance: {balances["ETH"] || "0.00"} ETH
+            </div>
+          </div>
+        )}
 
         {isConnected && (
           <button onClick={reverseSwap} className="mb-2 text-cyan-300 underline text-sm hover:text-cyan-200">

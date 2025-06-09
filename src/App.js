@@ -37,11 +37,11 @@ export default function App() {
     setPage(name);
   };
 
-  // Global wallet connect logic with error handling
+  // Base Sepolia network configuration
   const BASE_SEPOLIA_CHAIN_ID = "0x14A34"; // 84532 in hex
   const BASE_SEPOLIA_PARAMS = {
     chainId: BASE_SEPOLIA_CHAIN_ID,
-    chainName: "Base Sepolia",
+    chainName: "Base Sepolia Testnet",
     nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
     rpcUrls: ["https://sepolia.base.org"],
     blockExplorerUrls: ["https://sepolia.basescan.org"]
@@ -73,39 +73,48 @@ export default function App() {
     }
     
     try {
-      const prov = new ethers.providers.Web3Provider(window.ethereum);
-      await prov.send("eth_requestAccounts", []);
+      // First request account access
+      await window.ethereum.request({ method: "eth_requestAccounts" });
       
-      // Check and switch to Base Sepolia network
+      // Check current network and switch if needed
       const chainId = await window.ethereum.request({ method: "eth_chainId" });
       if (chainId !== BASE_SEPOLIA_CHAIN_ID) {
         await switchToBaseSepolia();
-        // Re-get provider after network switch
-        const newProv = new ethers.providers.Web3Provider(window.ethereum);
-        setProvider(newProv);
-        setSigner(newProv.getSigner());
-        setAddress(await newProv.getSigner().getAddress());
-        setNetwork(await newProv.getNetwork());
-      } else {
-        setProvider(prov);
-        setSigner(prov.getSigner());
-        setAddress(await prov.getSigner().getAddress());
-        setNetwork(await prov.getNetwork());
+        // Small delay to allow network switch to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+      
+      // Create provider after network is correct
+      const prov = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = prov.getSigner();
+      const address = await signer.getAddress();
+      const network = await prov.getNetwork();
+      
+      // Verify we're on Base Sepolia
+      if (network.chainId !== 84532) {
+        alert("Please switch to Base Sepolia network");
+        return;
+      }
+      
+      setProvider(prov);
+      setSigner(signer);
+      setAddress(address);
+      setNetwork(network);
+      
+      console.log("Connected to Base Sepolia:", {
+        address,
+        chainId: network.chainId,
+        name: network.name
+      });
+      
     } catch (err) {
       if (err.code === 4001) {
         alert("User rejected the connection request.");
-      } else if (
-        err.code === 'NETWORK_ERROR' &&
-        err.message &&
-        err.message.toLowerCase().includes('underlying network changed')
-      ) {
-        alert(
-          "Network changed while connecting. Please wait, the page will reload to sync with MetaMask."
-        );
-        setTimeout(() => window.location.reload(), 1200);
+      } else if (err.code === 4902) {
+        alert("Base Sepolia network not added to MetaMask. Please add it manually.");
       } else {
-        alert("MetaMask connection failed: " + err.message);
+        console.error("Connection error:", err);
+        alert("Failed to connect: " + (err.message || "Unknown error"));
       }
     }
   };
