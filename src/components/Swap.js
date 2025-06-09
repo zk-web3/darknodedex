@@ -182,57 +182,65 @@ export default function Swap({ onOpenSettings, onOpenTokenList, onConnectWallet 
             <FiSettings className="text-cyan-400 text-xl" />
           </button>
         </div>
-
-        <button onClick={reverseSwap} className="mb-2 text-cyan-300 underline text-sm">⇅ Reverse</button>
-
-        <div className="mb-4">
-          <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
-            <button onClick={() => onOpenTokenList('input')} className="text-cyan-300 font-semibold text-base backdrop-blur">
-              {inputToken.symbol}
+        {!address ? (
+          <button
+            onClick={connectWallet}
+            className="w-full py-3 rounded-2xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:from-cyan-400 hover:to-purple-500 transition text-white mb-4"
+          >
+            Connect Wallet
+          </button>
+        ) : (
+          <>
+            <button onClick={reverseSwap} className="mb-2 text-cyan-300 underline text-sm">⇅ Reverse</button>
+            <div className="mb-4">
+              <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
+                <button onClick={() => onOpenTokenList('input')} className="flex items-center gap-2 text-cyan-300 font-semibold text-base backdrop-blur">
+                  <img src={inputToken.logo} alt={inputToken.symbol} className="w-6 h-6 rounded-full" />
+                  {inputToken.symbol}
+                </button>
+                <input
+                  placeholder="0.00"
+                  value={amountIn}
+                  onChange={e => setAmountIn(e.target.value)}
+                  className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
+                />
+              </div>
+              <p className="text-white/50 text-xs mt-1">Balance: {balances[inputToken.symbol] || "-"}</p>
+            </div>
+            <div className="mb-6">
+              <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
+                <button onClick={() => onOpenTokenList('output')} className="flex items-center gap-2 text-cyan-300 font-semibold text-base backdrop-blur">
+                  <img src={outputToken.logo} alt={outputToken.symbol} className="w-6 h-6 rounded-full" />
+                  {outputToken.symbol}
+                </button>
+                <input
+                  placeholder="0.00"
+                  value={amountOut}
+                  readOnly
+                  className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
+                />
+              </div>
+              <p className="text-white/50 text-xs mt-1">Balance: {balances[outputToken.symbol] || "-"}</p>
+            </div>
+            <div className="flex flex-col gap-1 text-white/70 text-sm mb-6">
+              <div className="flex justify-between">
+                <span>Slippage: {slippage}%</span>
+                <span>Price Impact: {priceImpact || "-"}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Routing Path: {routingPath}</span>
+                <span>TWAP: {twapPrice || "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Gas: {gasEstimate || "-"}</span>
+              </div>
+            </div>
+            <button onClick={handleSwap} disabled={loading || !amountIn || !address}
+              className="w-full py-3 rounded-2xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:from-cyan-400 hover:to-purple-500 transition text-white">
+              {loading ? "Swapping..." : "Swap"}
             </button>
-            <input
-              placeholder="0.00"
-              value={amountIn}
-              onChange={e => setAmountIn(e.target.value)}
-              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
-            />
-          </div>
-          <p className="text-white/50 text-xs mt-1">Balance: {balances[inputToken.symbol] || "-"}</p>
-        </div>
-
-        <div className="mb-6">
-          <div className="flex items-center bg-black/30 rounded-xl px-4 py-3 border border-cyan-400/10">
-            <button onClick={() => onOpenTokenList('output')} className="text-cyan-300 font-semibold text-base backdrop-blur">
-              {outputToken.symbol}
-            </button>
-            <input
-              placeholder="0.00"
-              value={amountOut}
-              readOnly
-              className="ml-auto bg-transparent outline-none text-right text-2xl font-bold text-white placeholder:text-white/30 w-32"
-            />
-          </div>
-          <p className="text-white/50 text-xs mt-1">Balance: {balances[outputToken.symbol] || "-"}</p>
-        </div>
-
-        <div className="flex flex-col gap-1 text-white/70 text-sm mb-6">
-          <div className="flex justify-between">
-            <span>Slippage: {slippage}%</span>
-            <span>Price Impact: {priceImpact || "-"}%</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Routing Path: {routingPath}</span>
-            <span>TWAP: {twapPrice || "-"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Gas: {gasEstimate || "-"}</span>
-          </div>
-        </div>
-
-        <button onClick={handleSwap} disabled={loading || !amountIn || !address}
-          className="w-full py-3 rounded-2xl font-bold text-lg bg-gradient-to-r from-cyan-500 to-purple-600 shadow-lg hover:from-cyan-400 hover:to-purple-500 transition text-white">
-          {loading ? "Swapping..." : "Swap"}
-        </button>
+          </>
+        )}
         {txHash && <div className="mt-4 text-center text-sm text-white/80">Tx: <a href={`https://sepolia.basescan.org/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="text-cyan-400">{txHash.slice(0, 10)}...</a></div>}
         {error && <div className="mt-4 text-center text-sm text-red-400">{error}</div>}
       </div>
