@@ -1,4 +1,5 @@
 import React from "react";
+import DarkNodeSwapBox from "./DarkNodeSwapBox"; // 👈 Import your functional SwapBox component
 
 const DarkNodeSwapPage = () => {
   return (
@@ -10,13 +11,8 @@ const DarkNodeSwapPage = () => {
 
       {/* Main Content Area */}
       <main className="flex-grow flex justify-center items-center p-6">
-        {/* SwapBox Placeholder */}
-        <div className="w-full max-w-md border-4 border-dashed border-purple-700 rounded-3xl p-12 flex flex-col items-center justify-center">
-          <p className="text-purple-400 text-xl mb-4 font-semibold">
-            SwapBox Component Will Be Here
-          </p>
-          <div className="w-40 h-40 bg-purple-900 rounded-lg opacity-50 animate-pulse"></div>
-        </div>
+        {/* SwapBox Actual Component */}
+        <DarkNodeSwapBox /> {/* 👈 Replaced Placeholder with working component */}
       </main>
 
       {/* Footer */}
