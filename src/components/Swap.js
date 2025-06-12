@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { TOKENS } from "../utils/tokens";
-import { UNISWAP_ROUTER, UNISWAP_QUOTER } from "../utils/uniswap";
+import { UNISWAP_ROUTER } from "../utils/uniswap";
 import { FiSettings } from "react-icons/fi";
 
 export default function Swap({ 
@@ -25,7 +25,6 @@ export default function Swap({
   const [priceImpact, setPriceImpact] = useState(null);
   const [gasEstimate, setGasEstimate] = useState(null);
   const [routingPath, setRoutingPath] = useState("");
-  const [twapPrice, setTwapPrice] = useState(null);
 
   const fetchBalances = async () => {
     if (!provider || !address) return;
@@ -70,46 +69,102 @@ export default function Swap({
     }
   }, [provider, address]);
 
+  // V2 Router ke liye quote function
+  const getQuoteV2 = async (fromToken, toToken, amountInput) => {
+    try {
+      if (!provider || !amountInput || parseFloat(amountInput) <= 0) return null;
+
+      const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, provider);
+      
+      // Create path for swap
+      let path = [];
+      
+      if (fromToken.symbol === "ETH") {
+        // ETH to Token swap - use WETH in path
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [wethToken.address, toToken.address];
+      } else if (toToken.symbol === "ETH") {
+        // Token to ETH swap - use WETH in path  
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [fromToken.address, wethToken.address];
+      } else {
+        // Token to Token swap - direct or through WETH
+        path = [fromToken.address, toToken.address];
+        
+        // If direct path fails, try through WETH
+        try {
+          const amountInWei = ethers.utils.parseUnits(amountInput, fromToken.decimals);
+          await router.getAmountsOut(amountInWei, path);
+        } catch (e) {
+          // Try path through WETH
+          const wethToken = TOKENS.find(t => t.symbol === "WETH");
+          path = [fromToken.address, wethToken.address, toToken.address];
+        }
+      }
+
+      const amountInWei = ethers.utils.parseUnits(amountInput, fromToken.decimals);
+      const amounts = await router.getAmountsOut(amountInWei, path);
+      
+      // Last amount in array is the output amount
+      const amountOutWei = amounts[amounts.length - 1];
+      const amountOutput = ethers.utils.formatUnits(amountOutWei, toToken.decimals);
+
+      // Calculate price impact (simple estimation)
+      const rate = parseFloat(amountOutput) / parseFloat(amountInput);
+      const impact = Math.abs((1 - rate) * 100);
+      
+      return {
+        amountOut: amountOutput,
+        path: path,
+        priceImpact: impact.toFixed(2)
+      };
+
+    } catch (error) {
+      console.error("Quote error:", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const fetchQuote = async () => {
       setError("");
       if (!amountIn || !inputToken || !outputToken || !provider) {
         setAmountOut("");
+        setPriceImpact(null);
+        setRoutingPath("");
         return;
       }
       
       try {
-        const quoter = new ethers.Contract(UNISWAP_QUOTER.address, UNISWAP_QUOTER.abi, provider);
-        const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
-        const quotedOut = await quoter.quoteExactInputSingle(
-          inputToken.address,
-          outputToken.address,
-          3000,
-          amtIn,
-          0
-        );
-        const out = ethers.utils.formatUnits(quotedOut, outputToken.decimals);
-        setAmountOut(out);
-
-        const midPrice = parseFloat(out) / parseFloat(amountIn);
-        const impact = Math.abs(((midPrice - 1) / 1) * 100).toFixed(2);
-        setPriceImpact(impact);
-
-        setRoutingPath(`${inputToken.symbol} → 🛣 → ${outputToken.symbol}`);
-        setTwapPrice((parseFloat(out) * 0.98).toFixed(4));
-
-        // Auto-update slippage based on simple volatility logic
-        const newSlippage = Math.min(Math.max(parseFloat(impact) * 0.5, 0.1), 3.0);
-        setSlippage(parseFloat(newSlippage.toFixed(2)));
+        const quote = await getQuoteV2(inputToken, outputToken, amountIn);
+        
+        if (quote) {
+          setAmountOut(quote.amountOut);
+          setPriceImpact(quote.priceImpact);
+          
+          // Create routing path display
+          if (quote.path.length === 2) {
+            setRoutingPath(`${inputToken.symbol} → ${outputToken.symbol}`);
+          } else {
+            setRoutingPath(`${inputToken.symbol} → WETH → ${outputToken.symbol}`);
+          }
+          
+          // Auto-adjust slippage based on price impact
+          const newSlippage = Math.max(0.5, Math.min(parseFloat(quote.priceImpact) * 0.5, 3.0));
+          setSlippage(parseFloat(newSlippage.toFixed(2)));
+        } else {
+          setAmountOut("");
+          setError("No liquidity available for this pair");
+        }
 
       } catch (e) {
         setAmountOut("");
-        setError("No liquidity or invalid pair.");
+        setError("Unable to get quote. Check token pair.");
         console.error("Quote error:", e);
       }
     };
     
-    const debounceTimer = setTimeout(fetchQuote, 300);
+    const debounceTimer = setTimeout(fetchQuote, 500);
     return () => clearTimeout(debounceTimer);
   }, [amountIn, inputToken, outputToken, provider]);
 
@@ -118,26 +173,59 @@ export default function Swap({
       if (!signer || !amountIn || !inputToken || !outputToken || !amountOut) return;
       
       const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, signer);
-      const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
-      const amtOutMin = ethers.utils.parseUnits(
+      const amountInWei = ethers.utils.parseUnits(amountIn, inputToken.decimals);
+      const amountOutMin = ethers.utils.parseUnits(
         (parseFloat(amountOut) * (1 - slippage / 100)).toFixed(outputToken.decimals),
         outputToken.decimals
       );
       
-      const txReq = await router.populateTransaction.exactInputSingle({
-        tokenIn: inputToken.address,
-        tokenOut: outputToken.address,
-        fee: 3000,
-        recipient: address,
-        deadline: Math.floor(Date.now() / 1000) + 600,
-        amountIn: amtIn,
-        amountOutMinimum: amtOutMin,
-        sqrtPriceLimitX96: 0,
-      });
+      const deadline = Math.floor(Date.now() / 1000) + 600;
       
-      const gas = await provider.estimateGas({ ...txReq, from: address });
+      // Create path
+      let path = [];
+      if (inputToken.symbol === "ETH") {
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [wethToken.address, outputToken.address];
+      } else if (outputToken.symbol === "ETH") {
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [inputToken.address, wethToken.address];
+      } else {
+        path = [inputToken.address, outputToken.address];
+      }
+
+      let gasEstimate;
+      
+      if (inputToken.symbol === "ETH") {
+        // ETH to Token
+        gasEstimate = await router.estimateGas.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          address,
+          deadline,
+          { value: amountInWei }
+        );
+      } else if (outputToken.symbol === "ETH") {
+        // Token to ETH
+        gasEstimate = await router.estimateGas.swapExactTokensForETH(
+          amountInWei,
+          amountOutMin,
+          path,
+          address,
+          deadline
+        );
+      } else {
+        // Token to Token
+        gasEstimate = await router.estimateGas.swapExactTokensForTokens(
+          amountInWei,
+          amountOutMin,
+          path,
+          address,
+          deadline
+        );
+      }
+      
       const gasPrice = await provider.getGasPrice();
-      const ethCost = ethers.utils.formatEther(gas.mul(gasPrice));
+      const ethCost = ethers.utils.formatEther(gasEstimate.mul(gasPrice));
       setGasEstimate(`${parseFloat(ethCost).toFixed(6)} ETH`);
     } catch (err) {
       setGasEstimate(null);
@@ -169,45 +257,96 @@ export default function Swap({
     
     try {
       const router = new ethers.Contract(UNISWAP_ROUTER.address, UNISWAP_ROUTER.abi, signer);
-      const amtIn = ethers.utils.parseUnits(amountIn, inputToken.decimals);
-      const amtOutMin = ethers.utils.parseUnits(
+      const amountInWei = ethers.utils.parseUnits(amountIn, inputToken.decimals);
+      const amountOutMin = ethers.utils.parseUnits(
         (parseFloat(amountOut) * (1 - slippage / 100)).toFixed(outputToken.decimals),
         outputToken.decimals
       );
+      
+      const deadline = Math.floor(Date.now() / 1000) + 600; // 10 minutes
 
-      // Check if we need to approve token first (if not ETH)
-      if (inputToken.symbol !== "ETH") {
+      // Create swap path
+      let path = [];
+      if (inputToken.symbol === "ETH") {
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [wethToken.address, outputToken.address];
+      } else if (outputToken.symbol === "ETH") {
+        const wethToken = TOKENS.find(t => t.symbol === "WETH");
+        path = [inputToken.address, wethToken.address];
+      } else {
+        // Try direct path first, fallback to WETH route
+        path = [inputToken.address, outputToken.address];
+        try {
+          await router.getAmountsOut(amountInWei, path);
+        } catch (e) {
+          const wethToken = TOKENS.find(t => t.symbol === "WETH");
+          path = [inputToken.address, wethToken.address, outputToken.address];
+        }
+      }
+
+      let tx;
+
+      if (inputToken.symbol === "ETH") {
+        // ETH to Token swap
+        tx = await router.swapExactETHForTokens(
+          amountOutMin,
+          path,
+          address,
+          deadline,
+          { value: amountInWei }
+        );
+      } else {
+        // Token approval check for non-ETH swaps
         const tokenContract = new ethers.Contract(
           inputToken.address,
-          ["function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"],
+          [
+            "function allowance(address,address) view returns (uint256)", 
+            "function approve(address,uint256) returns (bool)"
+          ],
           signer
         );
         
         const allowance = await tokenContract.allowance(address, UNISWAP_ROUTER.address);
-        if (allowance.lt(amtIn)) {
+        if (allowance.lt(amountInWei)) {
+          console.log("Approving token...");
           const approveTx = await tokenContract.approve(UNISWAP_ROUTER.address, ethers.constants.MaxUint256);
           await approveTx.wait();
+          console.log("Token approved");
+        }
+
+        if (outputToken.symbol === "ETH") {
+          // Token to ETH swap
+          tx = await router.swapExactTokensForETH(
+            amountInWei,
+            amountOutMin,
+            path,
+            address,
+            deadline
+          );
+        } else {
+          // Token to Token swap
+          tx = await router.swapExactTokensForTokens(
+            amountInWei,
+            amountOutMin,
+            path,
+            address,
+            deadline
+          );
         }
       }
-
-      const tx = await router.exactInputSingle({
-        tokenIn: inputToken.address,
-        tokenOut: outputToken.address,
-        fee: 3000,
-        recipient: address,
-        deadline: Math.floor(Date.now() / 1000) + 600,
-        amountIn: amtIn,
-        amountOutMinimum: amtOutMin,
-        sqrtPriceLimitX96: 0,
-      });
       
       setTxHash(tx.hash);
+      console.log("Swap transaction sent:", tx.hash);
+      
       await tx.wait();
       setLoading(false);
       alert("Swap successful!");
-      fetchBalances();
+      
+      // Refresh balances and clear inputs
+      await fetchBalances();
       setAmountIn("");
       setAmountOut("");
+      
     } catch (e) {
       setLoading(false);
       setError("Swap failed: " + (e?.message || "Unexpected error"));
@@ -311,7 +450,7 @@ export default function Swap({
             </div>
             <div className="flex justify-between">
               <span>Route:</span>
-              <span>{routingPath}</span>
+              <span className="text-xs">{routingPath}</span>
             </div>
             {gasEstimate && (
               <div className="flex justify-between">
