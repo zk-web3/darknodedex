@@ -49,7 +49,8 @@ const DarkNodeSwapBox = () => {
       const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
       const tokenInContract = new ethers.Contract(tokenIn.address, ERC20_ABI, signer);
 
-      await tokenInContract.approve(UNISWAP_ROUTER_ADDRESS, amountInWei);
+      const approvalTx = await tokenInContract.approve(UNISWAP_ROUTER_ADDRESS, amountInWei);
+      await approvalTx.wait();
 
       const tx = await routerContract.exactInputSingle({
         tokenIn: tokenIn.address,
