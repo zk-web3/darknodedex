@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { TOKENS } from "../utils/tokens";
 import { UNISWAP_ROUTER_ABI, UNISWAP_ROUTER_ADDRESS } from "../utils/uniswap";
@@ -9,6 +9,10 @@ let signer;
 
 const DarkNodeSwapBox = () => {
   const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [balances, setBalances] = useState({});
+  const [loadingConnect, setLoadingConnect] = useState(false);
+
   const [tokenIn, setTokenIn] = useState(TOKENS[0]);
   const [tokenOut, setTokenOut] = useState(TOKENS[1]);
   const [amountIn, setAmountIn] = useState("");
@@ -17,18 +21,55 @@ const DarkNodeSwapBox = () => {
 
   const connectWallet = async () => {
     try {
+      setLoadingConnect(true);
+
       if (!window.ethereum) return alert("Please install MetaMask.");
       provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       signer = provider.getSigner();
       const network = await provider.getNetwork();
-      if (network.chainId !== 84532) return alert("Switch to Base Sepolia Network");
+
+      if (network.chainId !== 84532) {
+        alert("Please switch to Base Sepolia Network.");
+        setLoadingConnect(false);
+        return;
+      }
+
+      const address = await signer.getAddress();
+      setWalletAddress(address);
+
       setRouterContract(
         new ethers.Contract(UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, signer)
       );
+
+      await fetchBalances(address);
       setWalletConnected(true);
     } catch (error) {
       console.error("Wallet Connection Failed:", error);
+    } finally {
+      setLoadingConnect(false);
+    }
+  };
+
+  const fetchBalances = async (address) => {
+    try {
+      let updated = {};
+
+      // Fetch ETH Balance
+      const ethBal = await provider.getBalance(address);
+      updated["ETH"] = ethers.utils.formatEther(ethBal);
+
+      // Fetch other token balances
+      for (const token of TOKENS) {
+        if (token.symbol === "ETH") continue;
+        const tokenContract = new ethers.Contract(token.address, ERC20_ABI, provider);
+        const rawBal = await tokenContract.balanceOf(address);
+        updated[token.symbol] = ethers.utils.formatUnits(rawBal, token.decimals);
+      }
+
+      setBalances(updated);
+    } catch (err) {
+      console.error("Fetching balances failed", err);
     }
   };
 
@@ -63,30 +104,53 @@ const DarkNodeSwapBox = () => {
 
       await tx.wait();
       alert("Swap Successful");
+
+      // 🔁 Update balances
+      await fetchBalances(walletAddress);
     } catch (error) {
       console.error("Swap Failed:", error);
       alert("Swap Failed. Check console for details.");
     }
   };
 
-  // 👇 Only Connect Wallet Button visible first
+  // 🟣 Connect Button
   if (!walletConnected) {
     return (
       <div className="text-center">
         <button
           onClick={connectWallet}
           className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-xl text-lg font-semibold"
+          disabled={loadingConnect}
         >
-          Connect Wallet
+          {loadingConnect ? "Connecting..." : "Connect Wallet"}
         </button>
       </div>
     );
   }
 
-  // 👇 SwapBox visible only after wallet connect
+  // 🟪 Swap Box (after wallet connected)
   return (
-    <div className="bg-zinc-900 rounded-2xl shadow-xl p-6 w-[360px]">
+    <div className="bg-zinc-900 rounded-2xl shadow-xl p-6 w-[380px]">
       <h2 className="text-2xl font-bold mb-4 text-center">DarkNode DEX</h2>
+
+      <div className="text-sm text-gray-400 mb-4 break-all text-center">
+        Connected: {walletAddress}
+      </div>
+
+      <div className="bg-zinc-800 p-3 rounded-lg text-sm mb-4">
+        <h4 className="font-semibold mb-2 text-purple-400">Wallet Balances</h4>
+        {Object.keys(balances).length === 0 ? (
+          <p>Loading balances...</p>
+        ) : (
+          <ul className="space-y-1">
+            {Object.entries(balances).map(([sym, bal]) => (
+              <li key={sym}>
+                <span className="font-semibold">{sym}:</span> {parseFloat(bal).toFixed(4)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* From Token */}
       <div className="mb-4">
