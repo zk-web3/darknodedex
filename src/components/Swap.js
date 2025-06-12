@@ -4,17 +4,8 @@ const DarkNodeSwapPage = () => {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
-      <header className="bg-zinc-900 p-4 shadow-md flex items-center justify-between">
+      <header className="bg-zinc-900 p-4 shadow-md flex items-center justify-center">
         <h1 className="text-3xl font-bold tracking-wide">DarkNode DEX</h1>
-        <nav>
-          {/* Placeholder for nav links if needed later */}
-          <ul className="flex space-x-6 text-sm text-gray-400">
-            <li className="hover:text-purple-500 cursor-pointer">Swap</li>
-            <li className="hover:text-purple-500 cursor-pointer">Liquidity</li>
-            <li className="hover:text-purple-500 cursor-pointer">Analytics</li>
-            <li className="hover:text-purple-500 cursor-pointer">Docs</li>
-          </ul>
-        </nav>
       </header>
 
       {/* Main Content Area */}
