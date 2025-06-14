@@ -14,6 +14,13 @@ export const ERC20_ABI = [
 
 export const tokens = [
   {
+    name: 'Ether',
+    symbol: 'ETH',
+    address: '0x0000000000000000000000000000000000000000', // Special address for native ETH
+    decimals: 18,
+    logoURI: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png?1696501628',
+  },
+  {
     name: 'Wrapped Ether',
     symbol: 'WETH',
     address: '0x4200000000000000000000000000000000000006', // WETH on Base Sepolia
