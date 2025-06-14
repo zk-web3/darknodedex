@@ -20,8 +20,11 @@ const dummyTokens = [
 ];
 
 const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi, handleConnectWallet }) => {
-    const [fromToken, setFromToken] = useState(dummyTokens[0]);
-    const [toToken, setToToken] = useState({ name: "Select Token", symbol: "Select Token", address: "", logo: "" });
+    const initialFromToken = tokens && tokens.length > 0 ? tokens[0] : { name: "Ethereum", symbol: "ETH", address: "0x0000000000000000000000000000000000000000", logo: "/eth.svg", decimals: 18 };
+    const initialToToken = tokens && tokens.length > 1 ? tokens[1] : { name: "Select Token", symbol: "Select Token", address: "", logo: "", decimals: 18 };
+
+    const [fromToken, setFromToken] = useState(initialFromToken);
+    const [toToken, setToToken] = useState(initialToToken);
     const [fromValue, setFromValue] = useState('0');
     const [toValue, setToValue] = useState('0');
     const [priceImpact, setPriceImpact] = useState('0.00');
@@ -294,6 +297,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         }
     };
 
+    const amountOutMin = toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
+
     const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
         address: uniswapRouter.address,
         abi: uniswapRouter.abi,
@@ -302,7 +307,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             tokenIn: tokens.find(t => t.symbol === 'WETH').address,
             tokenOut: toToken.address,
             amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
-            amountOutMinimum: toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n,
+            amountOutMinimum: amountOutMin,
             recipient: address,
             deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
             sqrtPriceLimitX96: 0n,
@@ -310,7 +315,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             tokenIn: fromToken.address,
             tokenOut: toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : toToken.address,
             amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
-            amountOutMinimum: toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n,
+            amountOutMinimum: amountOutMin,
             recipient: address,
             deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
             sqrtPriceLimitX96: 0n,
@@ -547,15 +552,15 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 <button
                     onClick={handleApprove}
                     disabled={isApproveLoading || !approveSimulateData?.request}
-                    className="w-full py-3 rounded-xl bg-fuchsia-600 text-white text-xl font-bold hover:bg-fuchsia-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg shadow-fuchsia-500/50 hover:shadow-fuchsia-500/70"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white text-xl font-bold hover:from-fuchsia-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-fuchsia-500/50 hover:shadow-fuchsia-500/70 font-['Orbitron']"
                 >
                     {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
                 </button>
             ) : (
                 <button
                     onClick={handleSwap}
-                    disabled={isSwapLoading || !swapSimulateData?.request}
-                    className="w-full py-3 rounded-xl bg-fuchsia-600 text-white text-xl font-bold hover:bg-fuchsia-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg shadow-fuchsia-500/50 hover:shadow-fuchsia-500/70"
+                    disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white text-xl font-bold hover:from-fuchsia-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-fuchsia-500/50 hover:shadow-fuchsia-500/70 font-['Orbitron']"
                 >
                     {isSwapLoading ? 'Swapping...' : 'Swap'}
                 </button>
