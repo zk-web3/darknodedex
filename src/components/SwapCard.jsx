@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { ethers } from 'ethers';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
+import { Menu } from '@headlessui/react';
+import { Transition } from '@headlessui/react';
+import { classNames } from '../utils/classNames';
 
 const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi }) => {
     const [fromToken, setFromToken] = useState(tokens[0]);
@@ -256,172 +259,160 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const estimatedGas = approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit ? formatUnits(approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit || 0n, 0) : 'N/A';
 
     return (
-        <div className="bg-gray-900 rounded-lg p-6 shadow-xl max-w-md w-full border border-gray-700 glassmorphism-bg">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white neon-text">Swap</h2>
-                {/* Settings icon can go here */}
-            </div>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-darknode-bg font-rajdhani">
+            <div className="w-full max-w-md p-6 bg-darknode-container rounded-lg shadow-glass-neumorphic border border-darknode-border-neon">
+                <h2 className="text-white text-2xl font-bold text-center mb-6">Swap</h2>
 
-            {/* Sell Token Input */}
-            <div className="mb-3 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500 transition-colors duration-200 relative">
-                <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400 text-lg">Sell</span>
-                    <span className="text-gray-400 text-sm">Balance: {fromTokenBalance ? formatUnits(fromTokenBalance.value, fromTokenBalance.decimals) : '0.0'} {fromToken.symbol}</span>
-                </div>
-                <div className="flex items-center">
-                    <input
-                        type="number"
-                        placeholder="0.00"
-                        className="w-full bg-transparent text-white text-3xl font-semibold outline-none focus:outline-none"
-                        value={fromValue}
-                        onChange={handleFromValueChange}
-                    />
-                    <button
-                        className="flex items-center bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-xl transition duration-200"
-                        onClick={() => setShowFromTokenSelect(!showFromTokenSelect)}
-                    >
-                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-7 h-7 mr-2 rounded-full" />
-                        <span className="text-xl font-semibold">{fromToken.symbol}</span>
-                        <ChevronDownIcon className="h-5 w-5 ml-2 text-gray-400" />
-                    </button>
-                </div>
-                {showFromTokenSelect && (
-                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 left-0 right-0 max-h-60 overflow-y-auto border border-gray-600">
-                        {tokens.map(token => (
-                            <div
-                                key={token.address}
-                                className="flex items-center p-3 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setFromToken(token); setShowFromTokenSelect(false); }}
-                            >
-                                <img src={token.logoURI} alt={token.symbol} className="w-7 h-7 mr-3 rounded-full" />
-                                <span className="text-lg">{token.symbol}</span>
-                            </div>
-                        ))}
+                <div className="relative mb-4 bg-darknode-alt-container rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <label htmlFor="from-token-input" className="text-gray-400 text-sm">Sell</label>
+                        <span className="text-gray-400 text-sm">Balance: {fromTokenBalance ? parseFloat(formatUnits(fromTokenBalance.value, fromTokenBalance.decimals)).toFixed(4) : '0.0000'} {fromToken.symbol}</span>
                     </div>
-                )}
-            </div>
-
-            {/* Swap Arrow */}
-            <div className="flex justify-center -my-3">
-                <button
-                    className="bg-gray-700 p-2 rounded-full border-4 border-gray-900 hover:border-purple-500 transition-colors duration-200 shadow-lg z-10"
-                    onClick={handleSwapTokens}
-                >
-                    <ArrowDownIcon className="h-6 w-6 text-purple-400" />
-                </button>
-            </div>
-
-            {/* Buy Token Input */}
-            <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500 transition-colors duration-200 relative">
-                <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400 text-lg">Buy</span>
-                    <span className="text-gray-400 text-sm">Balance: {toTokenBalance ? formatUnits(toTokenBalance.value, toTokenBalance.decimals) : '0.0'} {toToken.symbol}</span>
-                </div>
-                <div className="flex items-center">
-                    <input
-                        type="number"
-                        placeholder="0.00"
-                        className="w-full bg-transparent text-white text-3xl font-semibold outline-none focus:outline-none"
-                        value={toValue}
-                        readOnly
-                    />
-                    <button
-                        className="flex items-center bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-xl transition duration-200"
-                        onClick={() => setShowToTokenSelect(!showToTokenSelect)}
-                    >
-                        <img src={toToken.logoURI} alt={toToken.symbol} className="w-7 h-7 mr-2 rounded-full" />
-                        <span className="text-xl font-semibold">{toToken.symbol}</span>
-                        <ChevronDownIcon className="h-5 w-5 ml-2 text-gray-400" />
-                    </button>
-                </div>
-                {showToTokenSelect && (
-                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 left-0 right-0 max-h-60 overflow-y-auto border border-gray-600">
-                        {tokens.map(token => (
-                            <div
-                                key={token.address}
-                                className="flex items-center p-3 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setToToken(token); setShowToTokenSelect(false); }}
-                            >
-                                <img src={token.logoURI} alt={token.symbol} className="w-7 h-7 mr-3 rounded-full" />
-                                <span className="text-lg">{token.symbol}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Price Impact & Slippage & Fees */}
-            <div className="text-gray-400 text-sm space-y-2 mb-6">
-                <div className="flex justify-between">
-                    <span>Price Impact:</span>
-                    <span className="font-medium text-white">{priceImpact}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span>Slippage Tolerance:</span>
                     <div className="flex items-center">
                         <input
-                            id="slippage"
+                            id="from-token-input"
                             type="number"
-                            step="0.1"
-                            min="0.1"
-                            max="50"
-                            value={slippage}
-                            onChange={(e) => setSlippage(e.target.value)}
-                            className="w-20 bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-white text-sm outline-none focus:border-purple-500"
+                            placeholder="0.0"
+                            value={fromValue}
+                            onChange={handleFromValueChange}
+                            className="w-full text-3xl font-bold bg-transparent text-white focus:outline-none placeholder-gray-600"
                         />
-                        <span className="ml-1">%</span>
+                        <Menu as="div" className="relative ml-3">
+                            <div>
+                                <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-xl text-lg transition duration-200 focus:outline-none">
+                                    <img src="/path/to/placeholder-eth-icon.svg" alt="ETH" className="h-5 w-5 rounded-full" />{fromToken.symbol} <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+                                </Menu.Button>
+                            </div>
+                            <Transition
+                                as={Fragment}
+                                enter="transition ease-out duration-100"
+                                enterFrom="transform opacity-0 scale-95"
+                                enterTo="transform opacity-100 scale-100"
+                                leave="transition ease-in duration-75"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="transform opacity-0 scale-95"
+                            >
+                                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    {tokens.map((token) => (
+                                        <Menu.Item key={token.symbol}>
+                                            {({ active }) => (
+                                                <button
+                                                    onClick={() => { setFromToken(token); setToValue(''); }}
+                                                    className={classNames(
+                                                        active ? 'bg-gray-700 text-white' : 'text-gray-300',
+                                                        'block w-full text-left px-4 py-2 text-sm'
+                                                    )}
+                                                >
+                                                    {token.symbol}
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    ))}
+                                </Menu.Items>
+                            </Transition>
+                        </Menu>
                     </div>
+                    <div className="text-gray-500 text-sm mt-1">$0.00</div>
                 </div>
-                <div className="flex justify-between">
-                    <span>Fee (0.25%):</span>
-                    <span className="font-medium text-white">~ 0.00 ETH</span> {/* Placeholder */}
-                </div>
-                <div className="flex justify-between">
-                    <span>Network fee:</span>
-                    <span className="font-medium text-white">~ {estimatedGas} ETH</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Routing source:</span>
-                    <span className="font-medium text-white">Uniswap V3</span> {/* Placeholder */}
-                </div>
-            </div>
 
-            {walletConnected ? (
-                needsApproval && fromToken.address !== '0x0000000000000000000000000000000000000000' ? (
+                <div className="flex justify-center my-2">
                     <button
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
-                        onClick={handleApprove}
-                        disabled={isApproveLoading || !approveSimulateData?.request || amountToApproveBigInt === 0n}
+                        onClick={handleSwapTokens}
+                        className="p-2 rounded-full bg-darknode-alt-container hover:bg-gray-700 text-darknode-neon-cyan focus:outline-none"
                     >
-                        {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
+                        <ArrowDownIcon className="h-5 w-5" />
                     </button>
+                </div>
+
+                <div className="relative mb-4 bg-darknode-alt-container rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <label htmlFor="to-token-input" className="text-gray-400 text-sm">Buy</label>
+                        <span className="text-gray-400 text-sm">Balance: {toTokenBalance ? parseFloat(formatUnits(toTokenBalance.value, toTokenBalance.decimals)).toFixed(4) : '0.0000'} {toToken.symbol}</span>
+                    </div>
+                    <div className="flex items-center">
+                        <input
+                            id="to-token-input"
+                            type="text"
+                            placeholder="0.0"
+                            value={toValue}
+                            readOnly
+                            className="w-full text-3xl font-bold bg-transparent text-white focus:outline-none placeholder-gray-600"
+                        />
+                        <Menu as="div" className="relative ml-3">
+                            <div>
+                                <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-xl text-lg transition duration-200 focus:outline-none">
+                                    <img src="/path/to/placeholder-sushi-icon.svg" alt="SUSHI" className="h-5 w-5 rounded-full" />{toToken.symbol} <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+                                </Menu.Button>
+                            </div>
+                            <Transition
+                                as={Fragment}
+                                enter="transition ease-out duration-100"
+                                enterFrom="transform opacity-0 scale-95"
+                                enterTo="transform opacity-100 scale-100"
+                                leave="transition ease-in duration-75"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="transform opacity-0 scale-95"
+                            >
+                                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    {tokens.map((token) => (
+                                        <Menu.Item key={token.symbol}>
+                                            {({ active }) => (
+                                                <button
+                                                    onClick={() => { setToToken(token); setToValue(''); }}
+                                                    className={classNames(
+                                                        active ? 'bg-gray-700 text-white' : 'text-gray-300',
+                                                        'block w-full text-left px-4 py-2 text-sm'
+                                                    )}
+                                                >
+                                                    {token.symbol}
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    ))}
+                                </Menu.Items>
+                            </Transition>
+                        </Menu>
+                    </div>
+                    <div className="text-gray-500 text-sm mt-1">$0.00</div>
+                </div>
+
+                {walletConnected ? (
+                    needsApproval ? (
+                        <button
+                            onClick={handleApprove}
+                            disabled={!approveSimulateData?.request}
+                            className="w-full bg-darknode-neon-purple hover:bg-darknode-neon-cyan text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
+                        >
+                            Approve {fromToken.symbol}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSwap}
+                            disabled={!swapSimulateData?.request || parseFloat(fromValue) === 0}
+                            className="w-full bg-darknode-neon-purple hover:bg-darknode-neon-cyan text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
+                        >
+                            Swap
+                        </button>
+                    )
                 ) : (
                     <button
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
-                        onClick={handleSwap}
-                        disabled={isSwapLoading || !swapSimulateData?.request || amountInBigInt === 0n || !toValue}
+                        className="w-full bg-darknode-button-connect text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
+                        disabled
                     >
-                        {isSwapLoading ? 'Swapping...' : 'Swap'}
+                        Connect Wallet
                     </button>
-                )
-            ) : (
-                <button
-                    className="w-full bg-gray-600 text-white font-bold py-3 px-4 rounded-lg text-lg cursor-not-allowed"
-                    disabled
-                >
-                    Connect Wallet to Swap
-                </button>
-            )}
+                )}
 
-            <TxStatusModal
-                isOpen={isModalOpen}
-                onClose={closeModal}
-                status={modalStatus}
-                title={modalTitle}
-                message={modalMessage}
-                txHash={modalTxHash}
-                explorerUrl="https://sepolia.basescan.org"
-            />
+                <TxStatusModal
+                    isOpen={isModalOpen}
+                    onClose={closeModal}
+                    status={modalStatus}
+                    title={modalTitle}
+                    message={modalMessage}
+                    txHash={modalTxHash}
+                    explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
+                />
+            </div>
         </div>
     );
 };
