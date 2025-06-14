@@ -2,8 +2,6 @@ import Link from 'next/link';
 import { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
-import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
-import { injected } from 'wagmi/connectors';
 import { toast } from 'react-hot-toast';
 
 function classNames(...classes) {
@@ -16,13 +14,10 @@ const navigation = [
   { name: 'Stake', href: '/tokens', current: false },
 ];
 
-export default function Navbar() {
-    const { address, isConnected, chain } = useAccount();
-    const { connect } = useConnect();
-    const { disconnect } = useDisconnect();
-    const { data: ensName } = useEnsName({ address });
-
+export default function Navbar({ isConnected, address, chain, handleConnectWallet }) {
     const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.basescan.org";
+
+    const ensName = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
 
     const handleCopyAddress = () => {
         if (address) {
@@ -82,7 +77,7 @@ export default function Navbar() {
                       <div>
                         <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-purple-500">
                           <span className="text-sm">
-                              {ensName || `${address.slice(0, 6)}...${address.slice(-4)}`}
+                              {ensName}
                           </span>
                           <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
                         </Menu.Button>
@@ -100,7 +95,7 @@ export default function Navbar() {
                           <Menu.Item>
                             {({ active }) => (
                               <button
-                                onClick={() => disconnect()}
+                                onClick={() => { /* Disconnect logic now handled by handleConnectWallet */}}
                                 className={classNames(
                                   active ? 'bg-gray-700 text-white' : 'text-gray-300',
                                   'block w-full text-left px-4 py-2 text-sm'
@@ -141,7 +136,7 @@ export default function Navbar() {
                     </Menu>
                 ) : (
                     <button
-                        onClick={() => connect({ connector: injected() })}
+                        onClick={handleConnectWallet}
                         className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200"
                     >
                         Connect Wallet

@@ -12,7 +12,7 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi }) => {
+const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi, handleConnectWallet }) => {
     const [fromToken, setFromToken] = useState(tokens[0]);
     const [toToken, setToToken] = useState(tokens[1]);
     const [fromValue, setFromValue] = useState('');
@@ -400,8 +400,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     )
                 ) : (
                     <button
+                        onClick={handleConnectWallet}
                         className="w-full bg-darknode-button-connect text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
-                        disabled
                     >
                         Connect Wallet
                     </button>
