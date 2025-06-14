@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { ethers } from 'ethers';
+import { useBalance, usePrepareWriteContract, useWriteContract, useWaitForTransaction, useSimulateContract } from 'wagmi';
+import TxStatusModal from './TxStatusModal';
 
 const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi }) => {
     const [fromToken, setFromToken] = useState(tokens[0]);
@@ -15,10 +17,49 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
     const [swapping, setSwapping] = useState(false);
     const [needsApproval, setNeedsApproval] = useState(false);
 
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalStatus, setModalStatus] = useState('');
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
+    const [modalTxHash, setModalTxHash] = useState('');
+
+    const openModal = (status, title, message, txHash = '') => {
+        setModalStatus(status);
+        setModalTitle(title);
+        setModalMessage(message);
+        setModalTxHash(txHash);
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setModalStatus('');
+        setModalTitle('');
+        setModalMessage('');
+        setModalTxHash('');
+    };
+
+    // Fetch balances for selected tokens
+    const { data: fromTokenBalance } = useBalance({
+        address: address,
+        token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
+        watch: true, // Keep updated
+    });
+    const { data: toTokenBalance } = useBalance({
+        address: address,
+        token: toToken.address === '0x0000000000000000000000000000000000000000' ? undefined : toToken.address,
+        watch: true,
+    });
+
     // Helper function to format token amounts
     const formatTokenAmount = (amount, decimals) => {
         if (!amount) return '';
-        return ethers.utils.formatUnits(amount, decimals);
+        try {
+            return ethers.utils.formatUnits(amount, decimals);
+        } catch (e) {
+            return '0.0'; // Handle potential formatting errors gracefully
+        }
     };
 
     // Helper function to parse token amounts
@@ -67,14 +108,72 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
         fetchQuote();
     }, [fromValue, fromToken, toToken, provider]);
 
+    // --- Price Impact Calculation ---
+    useEffect(() => {
+        const calculatePriceImpact = async () => {
+            if (fromValue && toValue && fromToken && toToken && provider && !parseTokenAmount(fromValue, fromToken.decimals).isZero()) {
+                // Get a micro-quote for a small amount to approximate market price
+                const smallAmountIn = ethers.utils.parseUnits('1', fromToken.decimals); // 1 unit of fromToken
+                const smallQuoteOut = await getQuote(smallAmountIn, fromToken, toToken);
+
+                if (smallQuoteOut.gt(0)) {
+                    // Calculate the ideal expected output based on the small quote (market price)
+                    const marketPriceRatio = parseFloat(ethers.utils.formatUnits(smallQuoteOut, toToken.decimals)) / parseFloat(ethers.utils.formatUnits(smallAmountIn, fromToken.decimals));
+                    const expectedOutput = parseFloat(fromValue) * marketPriceRatio;
+
+                    const actualOutput = parseFloat(toValue);
+
+                    if (expectedOutput > 0) {
+                        const impact = ((expectedOutput - actualOutput) / expectedOutput) * 100;
+                        setPriceImpact(impact.toFixed(2));
+                    } else {
+                        setPriceImpact('0.00');
+                    }
+                } else {
+                    setPriceImpact('0.00');
+                }
+            } else {
+                setPriceImpact('0.00');
+            }
+        };
+        calculatePriceImpact();
+    }, [fromValue, toValue, fromToken, toToken, provider]);
+
+    // --- Wagmi hooks for Approval --- 
+    const amountToApprove = fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000' 
+        ? parseTokenAmount(fromValue, fromToken.decimals) 
+        : ethers.BigNumber.from(0);
+
+    const { config: approveConfig, error: approvePrepareError } = usePrepareWriteContract({
+        address: fromToken.address,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [uniswapRouter.address, ethers.constants.MaxUint256], // Approve max for simplicity
+        enabled: needsApproval && walletConnected && amountToApprove.gt(0),
+    });
+    const { data: approveData, write: writeApprove } = useWriteContract(approveConfig);
+    const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransaction({ hash: approveData?.hash });
+
+    useEffect(() => {
+        if (isApproveLoading) {
+            openModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
+        } else if (isApproveSuccess) {
+            openModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
+            setNeedsApproval(false);
+        } else if (isApproveErrorTx) {
+            openModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approvePrepareError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
+        }
+    }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approvePrepareError, approveTxData]);
+
+
     useEffect(() => {
         const checkApproval = async () => {
             if (walletConnected && address && signer && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
                 try {
                     const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, provider);
                     const allowance = await tokenContract.allowance(address, uniswapRouter.address);
-                    const amountToApprove = parseTokenAmount(fromValue, fromToken.decimals);
-                    setNeedsApproval(allowance.lt(amountToApprove));
+                    const amountIn = parseTokenAmount(fromValue, fromToken.decimals);
+                    setNeedsApproval(allowance.lt(amountIn));
                 } catch (error) {
                     console.error("Error checking approval:", error);
                     setNeedsApproval(true); // Assume approval needed on error
@@ -99,94 +198,81 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
     };
 
     const handleApprove = async () => {
-        setApproving(true);
-        try {
-            const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, signer);
-            const amountToApprove = ethers.constants.MaxUint256; // Approve max for simplicity
-            const tx = await tokenContract.approve(uniswapRouter.address, amountToApprove);
-            await tx.wait();
-            setNeedsApproval(false);
-            alert('Approval successful!');
-        } catch (error) {
-            console.error("Approval failed:", error);
-            alert(`Approval failed: ${error.message}`);
-        } finally {
-            setApproving(false);
+        if (writeApprove) {
+            writeApprove();
+        } else {
+            openModal('error', 'Approval Error', 'Could not prepare approval transaction. Check console for details.');
+            console.error("Approve function not ready or configuration error:", approvePrepareError);
         }
     };
 
-    const handleSwap = async () => {
-        setSwapping(true);
-        try {
-            const routerContract = new ethers.Contract(uniswapRouter.address, uniswapRouter.abi, signer);
-            const amountIn = parseTokenAmount(fromValue, fromToken.decimals);
-            const amountOutMin = parseTokenAmount(toValue, toToken.decimals).mul(ethers.BigNumber.from(10000 - parseFloat(slippage) * 100)).div(10000); // Apply slippage
-            const path = [fromToken.address, toToken.address];
-            const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
+    // --- Wagmi hooks for Swap --- 
+    const amountIn = parseTokenAmount(fromValue, fromToken.decimals);
+    const amountOutMin = parseTokenAmount(toValue, toToken.decimals).mul(ethers.BigNumber.from(10000 - parseFloat(slippage) * 100)).div(10000);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-            let tx;
-            if (fromToken.address === '0x0000000000000000000000000000000000000000') { // ETH to ERC20
-                tx = await routerContract.exactInputSingle({
-                    tokenIn: fromToken.address,
-                    tokenOut: toToken.address,
-                    fee: 3000,
-                    recipient: address,
-                    deadline: deadline,
-                    amountIn: amountIn,
-                    amountOutMinimum: amountOutMin,
-                    sqrtPriceLimitX96: 0
-                }, { value: amountIn });
-            } else if (toToken.address === '0x0000000000000000000000000000000000000000') { // ERC20 to ETH
-                 tx = await routerContract.exactInputSingle({
-                    tokenIn: fromToken.address,
-                    tokenOut: toToken.address,
-                    fee: 3000,
-                    recipient: address,
-                    deadline: deadline,
-                    amountIn: amountIn,
-                    amountOutMinimum: amountOutMin,
-                    sqrtPriceLimitX96: 0
-                });
-            } else { // ERC20 to ERC20
-                 tx = await routerContract.exactInputSingle({
-                    tokenIn: fromToken.address,
-                    tokenOut: toToken.address,
-                    fee: 3000,
-                    recipient: address,
-                    deadline: deadline,
-                    amountIn: amountIn,
-                    amountOutMinimum: amountOutMin,
-                    sqrtPriceLimitX96: 0
-                });
-            }
+    const swapArgs = {
+        tokenIn: fromToken.address,
+        tokenOut: toToken.address,
+        fee: 3000,
+        recipient: address,
+        deadline: deadline,
+        amountIn: amountIn,
+        amountOutMinimum: amountOutMin,
+        sqrtPriceLimitX96: 0
+    };
+
+    const isEthToToken = fromToken.address === '0x0000000000000000000000000000000000000000';
+
+    const { config: swapConfig, error: swapPrepareError, isError: isSwapPrepareError } = usePrepareWriteContract({
+        address: uniswapRouter.address,
+        abi: uniswapRouter.abi,
+        functionName: 'exactInputSingle',
+        args: [swapArgs],
+        value: isEthToToken ? amountIn : undefined,
+        enabled: walletConnected && amountIn.gt(0) && toValue && !needsApproval && !swapping,
+    });
+
+    const { data: swapData, write: writeSwap } = useWriteContract(swapConfig);
+    const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransaction({ hash: swapData?.hash });
 
 
-            await tx.wait();
-            alert('Swap successful!');
-
-            // --- Add this block for history storage --- 
+    useEffect(() => {
+        if (isSwapLoading) {
+            openModal('loading', 'Swapping...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
+        } else if (isSwapSuccess) {
+            openModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
+            // Save to local storage after successful swap
             const transaction = {
-                hash: tx.hash,
+                hash: swapTxData?.transactionHash,
                 fromToken: fromToken.symbol,
                 toToken: toToken.symbol,
                 fromAmount: fromValue,
                 toAmount: toValue,
                 timestamp: new Date().toISOString(),
             };
-
             const existingHistory = JSON.parse(localStorage.getItem('swapHistory')) || [];
             localStorage.setItem('swapHistory', JSON.stringify([transaction, ...existingHistory]));
-            // --- End of history storage block ---
 
             setFromValue('');
             setToValue('');
-        } catch (error) {
-            console.error("Swap failed:", error);
-            alert(`Swap failed: ${error.message}`);
-        } finally {
-            setSwapping(false);
+        } else if (isSwapErrorTx) {
+            openModal('error', 'Swap Failed', `Error swapping: ${swapPrepareError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
+        }
+    }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapPrepareError, swapTxData]);
+
+
+    const handleSwap = async () => {
+        if (writeSwap) {
+            writeSwap();
+        } else {
+            openModal('error', 'Swap Error', 'Could not prepare swap transaction. Check console for details.');
+            console.error("Swap function not ready or configuration error:", swapPrepareError);
         }
     };
+
+    const estimatedGas = approveConfig.request?.gasLimit || swapConfig.request?.gasLimit ? ethers.utils.formatUnits(approveConfig.request?.gasLimit || swapConfig.request?.gasLimit || ethers.BigNumber.from(0), 0) : 'N/A';
+
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full border border-purple-500 glassmorphism-bg">
@@ -199,7 +285,7 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
             <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-400">From</span>
-                    <span className="text-gray-400 text-sm">Balance: 0.0</span> {/* Placeholder for balance */}
+                    <span className="text-gray-400 text-sm">Balance: {fromTokenBalance ? formatTokenAmount(fromTokenBalance.value, fromTokenBalance.decimals) : '0.0'} {fromToken.symbol}</span>
                 </div>
                 <div className="flex items-center">
                     <input
@@ -247,7 +333,7 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
             <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
                 <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-400">To</span>
-                    <span className="text-gray-400 text-sm">Balance: 0.0</span> {/* Placeholder for balance */}
+                    <span className="text-gray-400 text-sm">Balance: {toTokenBalance ? formatTokenAmount(toTokenBalance.value, toTokenBalance.decimals) : '0.0'} {toToken.symbol}</span>
                 </div>
                 <div className="flex items-center">
                     <input
@@ -281,7 +367,7 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
                 )}
             </div>
 
-            {/* Price Impact & Slippage (Placeholder for now) */}
+            {/* Price Impact & Slippage */}
             <div className="text-gray-400 text-sm mb-4">
                 <p>Price Impact: {priceImpact}%</p>
                 <div className="flex items-center">
@@ -298,6 +384,7 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
                     />
                     <span className="ml-1">%</span>
                 </div>
+                <p className="mt-2">Estimated Gas: {estimatedGas} </p>
             </div>
 
             {walletConnected ? (
@@ -305,17 +392,17 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
                     <button
                         className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
                         onClick={handleApprove}
-                        disabled={approving}
+                        disabled={isApproveLoading || !writeApprove || amountToApprove.isZero()}
                     >
-                        {approving ? 'Approving...' : `Approve ${fromToken.symbol}`}
+                        {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
                     </button>
                 ) : (
                     <button
                         className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
                         onClick={handleSwap}
-                        disabled={swapping || !fromValue || !toValue || parseTokenAmount(fromValue, fromToken.decimals).isZero()}
+                        disabled={isSwapLoading || !writeSwap || amountIn.isZero() || !toValue}
                     >
-                        {swapping ? 'Swapping...' : 'Swap'}
+                        {isSwapLoading ? 'Swapping...' : 'Swap'}
                     </button>
                 )
             ) : (
@@ -326,6 +413,16 @@ const SwapCard = ({ walletConnected, address, provider, signer, tokens, uniswapR
                     Connect Wallet to Swap
                 </button>
             )}
+
+            <TxStatusModal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                status={modalStatus}
+                title={modalTitle}
+                message={modalMessage}
+                txHash={modalTxHash}
+                explorerUrl="https://sepolia.basescan.org"
+            />
         </div>
     );
 };

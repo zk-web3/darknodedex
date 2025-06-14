@@ -14,35 +14,38 @@ export const ERC20_ABI = [
   "function transferFrom(address from, address to, uint256 amount) returns (bool)"
 ];
 
-export const TOKENS = [
+export const tokens = [
   {
-    name: "Wrapped Ether",
-    symbol: "WETH",
-    address: "0x4200000000000000000000000000000000000006", // Base Sepolia WETH
+    name: 'Wrapped Ether',
+    symbol: 'WETH',
+    address: '0x4200000000000000000000000000000000000006', // WETH on Base Sepolia
+    decimals: 18,
+    logoURI: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295', // Real WETH logo
+  },
+  {
+    name: 'Uniswap',
+    symbol: 'UNI',
+    address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // Base Sepolia UNI (example, may need real deployment)
     decimals: 18,
   },
   {
-    name: "Uniswap",
-    symbol: "UNI",
-    address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", // Base Sepolia UNI (example, may need real deployment)
+    name: 'Chainlink',
+    symbol: 'LINK',
+    address: '0x779877A7B0D9E8603169DdbD7836e478b4624789', // Base Sepolia LINK (example, may need real deployment)
     decimals: 18,
   },
   {
-    name: "Chainlink",
-    symbol: "LINK",
-    address: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // Base Sepolia LINK (example, may need real deployment)
-    decimals: 18,
-  },
-  {
-    name: "USD Coin",
-    symbol: "USDC",
-    address: "0x0341Fb015f4BA5DcA7F2917d00d78c1266F6f273", // Base Sepolia USDC (example, may need real deployment)
+    name: 'USD Coin',
+    symbol: 'USDC',
+    address: '0x833589fCD6eDb6E08f954C3dc3B9D50edEe08467', // USDC on Base Sepolia
     decimals: 6,
+    logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389', // Real USDC logo
   },
   {
-    name: "DarkNode Token",
-    symbol: "DN",
-    address: "0xYourDNTokenAddressHere", // Placeholder for custom deployed DNToken
-    decimals: 18, // Adjust as per your token's decimals
+    name: 'DarkNode Token',
+    symbol: 'DN',
+    address: '0x7a232f05a5a6D0803534b7f8B47C569D9E06716a', // Placeholder - REPLACE WITH YOUR DEPLOYED DN TOKEN ADDRESS
+    decimals: 18,
+    logoURI: 'https://via.placeholder.com/24/purple/white?text=DN', // Custom DN token logo
   },
 ]; 
