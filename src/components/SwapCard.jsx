@@ -1,39 +1,33 @@
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
-import { ChevronDownIcon, ArrowDownIcon, XMarkIcon, Cog6ToothIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ArrowDownIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
-import TxStatusModal from './TxStatusModal';
+import TxStatusModal from './TxStatusModal'; // Assuming TxStatusModal is still in ./TxStatusModal
 import { Dialog, Transition } from '@headlessui/react';
-import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap';
-import { toast } from 'react-hot-toast';
+import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap'; // Assuming this correctly imports your explorer URL
+import { toast } from 'react-hot-toast'; // Assuming toast is configured in your project
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-const dummyTokens = [
-    { name: "Ethereum", symbol: "ETH", address: "0x0000000000000000000000000000000000000000", logo: "/path/to/eth.svg" },
-    { name: "Wrapped Ethereum", symbol: "WETH", address: "0x...WETH", logo: "/path/to/weth.svg" },
-    { name: "USD Coin", symbol: "USDC", address: "0x...USDC", logo: "/path/to/usdc.svg" },
-    { name: "Dai Stablecoin", symbol: "DAI", address: "0x...DAI", logo: "/path/to/dai.svg" },
-    { name: "DarkNode Token", symbol: "DN", address: "0x...DN", logo: "/path/to/dn.svg" },
-];
-
 const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi, handleConnectWallet }) => {
+    // Ensure tokens prop is available and has at least two tokens for initial state
     const initialFromToken = tokens && tokens.length > 0 ? tokens[0] : { name: "Ethereum", symbol: "ETH", address: "0x0000000000000000000000000000000000000000", logo: "/eth.svg", decimals: 18 };
     const initialToToken = tokens && tokens.length > 1 ? tokens[1] : { name: "Select Token", symbol: "Select Token", address: "", logo: "", decimals: 18 };
 
     const [fromToken, setFromToken] = useState(initialFromToken);
     const [toToken, setToToken] = useState(initialToToken);
-    const [fromValue, setFromValue] = useState('0');
-    const [toValue, setToValue] = useState('0');
+    const [fromValue, setFromValue] = useState('0'); // Initial state as '0' to match screenshot
+    const [toValue, setToValue] = useState('0');     // Initial state as '0' to match screenshot
     const [priceImpact, setPriceImpact] = useState('0.00');
-    const [slippage, setSlippage] = useState('0.5');
+    const [slippage, setSlippage] = useState('0.5'); // Default slippage
     const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false);
     const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false);
     const [needsApproval, setNeedsApproval] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Modal for transaction status
     const [isTxStatusModalOpen, setIsTxStatusModalOpen] = useState(false);
     const [modalStatus, setModalStatus] = useState('');
     const [modalTitle, setModalTitle] = useState('');
@@ -56,8 +50,10 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         setModalTxHash('');
     };
 
+    // Wagmi v2+ clients
     const publicClient = usePublicClient();
 
+    // Fetch balances for selected tokens (for display next to input fields)
     const { data: fromTokenBalanceData } = useBalance({
         address: address,
         token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
@@ -68,6 +64,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         query: { enabled: walletConnected && fromToken.address === '0x0000000000000000000000000000000000000000', watch: true },
     });
     const fromTokenBalance = fromToken.address === '0x0000000000000000000000000000000000000000' ? ethBalanceData : fromTokenBalanceData;
+
 
     const { data: toTokenBalanceData } = useBalance({
         address: address,
@@ -80,6 +77,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     });
     const toTokenBalance = toToken.address === '0x0000000000000000000000000000000000000000' ? toEthBalanceData : toTokenBalanceData;
 
+
+    // Fetch balances for ALL tokens in the list for the dropdowns
     const [allTokensBalances, setAllTokensBalances] = useState({});
 
     const ethBalanceQuery = useBalance({
@@ -90,21 +89,23 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         },
     });
 
-    const erc20TokenContracts = tokens.filter(token => token.address !== '0x0000000000000000000000000000000000000000').map(token => ({
+    // Ensure tokens passed to useReadContracts are ERC20s (not native ETH)
+    const erc20TokenContracts = tokens.filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').map(token => ({
         address: token.address,
         abi: erc20Abi,
         functionName: 'balanceOf',
         args: [address],
     }));
 
-    const { data: erc20BalancesData, isFetching: isFetchingErc20Balances } = useReadContracts({
+    const { data: erc20BalancesData } = useReadContracts({
         contracts: erc20TokenContracts,
         query: {
             enabled: walletConnected && erc20TokenContracts.length > 0,
             watch: true,
             select: (data) => {
                 const balancesMap = {};
-                tokens.filter(token => token.address !== '0x0000000000000000000000000000000000000000').forEach((token, index) => {
+                // Map results back to original tokens list
+                tokens.filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').forEach((token, index) => {
                     const balance = data[index]?.result;
                     if (balance !== undefined) {
                         balancesMap[token.address] = formatUnits(balance, token.decimals);
@@ -126,11 +127,17 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         setAllTokensBalances(newAllTokensBalances);
     }, [ethBalanceQuery.data, erc20BalancesData]);
 
-    const getQuote = useCallback(async (amountInBigInt, fromToken, toToken) => {
-        if (!publicClient || !uniswapQuoter || !fromToken || !toToken || amountInBigInt === 0n) return 0n;
+    const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
+        if (!publicClient || !uniswapQuoter || !currentFromToken || !currentToToken || amountInBigInt === 0n) return 0n;
 
-        const tokenInForQuote = fromToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : fromToken.address;
-        const tokenOutForQuote = toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : toToken.address;
+        // If ETH is involved, use WETH for quoting
+        const tokenInForQuote = currentFromToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : currentFromToken.address;
+        const tokenOutForQuote = currentToToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : currentToToken.address;
+
+        if (!tokenInForQuote || !tokenOutForQuote) {
+            console.error("WETH address not found in tokens for quoting.");
+            return 0n;
+        }
 
         try {
             const quote = await publicClient.readContract({
@@ -148,32 +155,33 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             return BigInt(quote);
         } catch (error) {
             console.error("Error getting quote:", error);
+            toast.error("Error getting quote: " + (error.shortMessage || error.message));
             return 0n;
         }
     }, [publicClient, uniswapQuoter, tokens]);
 
     useEffect(() => {
         const fetchQuote = async () => {
-            if (fromValue && fromToken && toToken && publicClient) {
+            if (fromValue && fromToken && toToken && publicClient && fromValue !== '0' && fromValue !== '') {
                 try {
                     const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
                     if (amountInBigInt > 0n) {
                         const quotedAmountOut = await getQuote(amountInBigInt, fromToken, toToken);
                         setToValue(formatUnits(quotedAmountOut, toToken.decimals));
                     } else {
-                        setToValue('');
+                        setToValue('0');
                     }
                 } catch (error) {
                     console.error("Error parsing fromValue or getting quote:", error);
-                    setToValue('');
+                    setToValue('0'); // Clear toValue on error
                 }
             } else {
-                setToValue('');
+                setToValue('0'); // Clear toValue if inputs are not ready or fromValue is 0
             }
         };
         const debounceFetch = setTimeout(() => {
             fetchQuote();
-        }, 300);
+        }, 300); // Debounce quote fetching
         return () => clearTimeout(debounceFetch);
     }, [fromValue, fromToken, toToken, publicClient, getQuote]);
 
@@ -216,8 +224,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         address: fromToken.address,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [uniswapRouter.address, BigInt(2n**256n - 1n)],
-        query: { enabled: walletConnected && amountToApproveBigInt > 0n },
+        args: [uniswapRouter.address, BigInt(2n**256n - 1n)], // Approving max amount
+        query: { enabled: walletConnected && amountToApproveBigInt > 0n && fromToken.address !== '0x0000000000000000000000000000000000000000' },
     });
     const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
     const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransactionReceipt({ hash: approveWriteData?.hash });
@@ -227,10 +235,12 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             openTxStatusModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
         } else if (isApproveSuccess) {
             openTxStatusModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
+            checkApproval(); // Re-check approval after successful approval
         } else if (isApproveErrorTx) {
-            openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
+            openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.shortMessage || approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
         }
-    }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
+    }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol, checkApproval]);
+
 
     const checkApproval = useCallback(async () => {
         if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
@@ -241,24 +251,25 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     functionName: 'allowance',
                     args: [address, uniswapRouter.address],
                 });
-                const amountIn = parseUnits(fromValue, fromToken.decimals);
+                const amountIn = parseUnits(fromValue || '0', fromToken.decimals); // Handle empty fromValue
                 setNeedsApproval(allowance < amountIn);
             } catch (error) {
                 console.error("Error checking approval:", error);
-                setNeedsApproval(true);
+                setNeedsApproval(true); // Assume approval is needed on error
             }
         } else {
-            setNeedsApproval(false);
+            setNeedsApproval(false); // No approval needed for ETH or if not connected/no value
         }
     }, [walletConnected, address, publicClient, fromToken, fromValue, uniswapRouter.address, erc20Abi]);
 
     useEffect(() => {
         checkApproval();
-    }, [checkApproval, fromValue, fromToken, address]);
+    }, [checkApproval, fromValue, fromToken, address]); // Re-check approval when inputs/tokens/address change
 
     const handleFromValueChange = (e) => {
         const value = e.target.value;
-        if (/^\d*\.?\d*$/.test(value)) {
+        // Allow empty string to clear input, or numbers with optional single decimal
+        if (value === '' || /^\d*\.?\d*$/.test(value)) {
             setFromValue(value);
         }
     };
@@ -270,10 +281,17 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     };
 
     const handleSwapTokens = () => {
-        setFromToken(toToken);
-        setToToken(fromToken);
-        setFromValue(toValue);
-        setToValue(fromValue);
+        // Swap tokens and their values
+        const tempFromToken = fromToken;
+        const tempToToken = toToken;
+        const tempFromValue = fromValue;
+        const tempToValue = toValue;
+
+        setFromToken(tempToToken);
+        setToToken(tempFromToken);
+        setFromValue(tempToValue);
+        setToValue(tempFromValue);
+        setSearchQuery(''); // Clear search query
     };
 
     const handleApprove = async () => {
@@ -283,7 +301,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             return;
         }
         if (!approveSimulateData?.request) {
-            toast.error('Unable to prepare approval transaction.');
+            toast.error('Unable to prepare approval transaction. Check console for details.');
             console.error("No approval request data:", approveSimulateData, approveSimulateError);
             return;
         }
@@ -293,36 +311,37 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             writeApprove(approveSimulateData.request);
         } catch (error) {
             console.error("Approval transaction failed:", error);
-            openTxStatusModal('error', 'Approval Failed', `Error initiating approval: ${error.message || 'Transaction rejected or failed.'}`);
+            openTxStatusModal('error', 'Approval Failed', `Error initiating approval: ${error.shortMessage || error.message || 'Transaction rejected or failed.'}`);
         }
     };
 
+    // Calculate minimum amount out with slippage
     const amountOutMin = toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
 
     const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
         address: uniswapRouter.address,
         abi: uniswapRouter.abi,
         functionName: fromToken.address === '0x0000000000000000000000000000000000000000' ? 'exactInputSingle' : 'exactInputSingle',
-        args: fromToken.address === '0x0000000000000000000000000000000000000000' ? [{
-            tokenIn: tokens.find(t => t.symbol === 'WETH').address,
+        args: fromToken.address === '0x0000000000000000000000000000000000000000' ? [{ // ETH -> Token
+            tokenIn: tokens.find(t => t.symbol === 'WETH')?.address, // Use WETH for ETH swaps
             tokenOut: toToken.address,
             amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
             amountOutMinimum: amountOutMin,
             recipient: address,
-            deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
+            deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // 20 minutes from now
             sqrtPriceLimitX96: 0n,
-        }] : [{
+        }] : [{ // Token -> ETH or Token -> Token
             tokenIn: fromToken.address,
-            tokenOut: toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : toToken.address,
+            tokenOut: toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : toToken.address, // Convert to WETH for ETH out
             amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
             amountOutMinimum: amountOutMin,
             recipient: address,
-            deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
+            deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // 20 minutes from now
             sqrtPriceLimitX96: 0n,
         }],
-        value: fromToken.address === '0x0000000000000000000000000000000000000000' && fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
+        value: fromToken.address === '0x0000000000000000000000000000000000000000' && fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n, // ETH value for swap
         query: {
-            enabled: walletConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval,
+            enabled: walletConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval && fromToken.address && toToken.address,
         },
     });
 
@@ -334,12 +353,13 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             openTxStatusModal('loading', 'Confirming Swap...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
         } else if (isSwapSuccess) {
             openTxStatusModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
-            setFromValue('');
-            setToValue('');
+            setFromValue('0');
+            setToValue('0');
         } else if (isSwapErrorTx) {
-            openTxStatusModal('error', 'Swap Failed', `Error during swap: ${swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
+            openTxStatusModal('error', 'Swap Failed', `Error during swap: ${swapSimulateError?.shortMessage || swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
         }
     }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, fromToken, toValue, toToken]);
+
 
     const handleSwap = async () => {
         if (!walletConnected) {
@@ -354,7 +374,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         }
 
         if (!swapSimulateData?.request) {
-            toast.error('Unable to prepare swap transaction.');
+            toast.error('Unable to prepare swap transaction. Check console for details.');
             console.error("No swap request data:", swapSimulateData, swapSimulateError);
             return;
         }
@@ -364,7 +384,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             writeSwap(swapSimulateData.request);
         } catch (error) {
             console.error("Swap transaction failed:", error);
-            openTxStatusModal('error', 'Swap Failed', `Error initiating swap: ${error.message || 'Transaction rejected or failed.'}`);
+            openTxStatusModal('error', 'Swap Failed', `Error initiating swap: ${error.shortMessage || error.message || 'Transaction rejected or failed.'}`);
         }
     };
 
@@ -376,9 +396,9 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             setToToken(token);
             setIsToTokenModalOpen(false);
         }
-        setSearchQuery('');
-        setFromValue('');
-        setToValue('');
+        setSearchQuery(''); // Clear search query when a token is selected
+        setFromValue('0'); // Clear values on token change to re-quote
+        setToValue('0');
     };
 
     const renderTokenList = (isFrom) => {
@@ -428,6 +448,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     return (
         <div className="bg-zinc-900/80 p-6 rounded-2xl shadow-xl border border-zinc-700 max-w-md mx-auto my-10 backdrop-filter backdrop-blur-lg font-['Exo']">
+            {/* Top Tabs and Settings */}
             <div className="flex justify-between items-center mb-6">
                 <div className="flex bg-zinc-800 rounded-full p-1 border border-zinc-700">
                     <button className="px-4 py-2 rounded-full bg-fuchsia-600 text-white font-bold text-sm shadow-md">Swap</button>
@@ -438,6 +459,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 <button className="text-gray-400 hover:text-white transition-colors"><Cog6ToothIcon className="h-6 w-6" /></button>
             </div>
 
+            {/* Sell Panel */}
             <div className="mb-4 bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
                 <div className="flex justify-between items-center mb-2">
                     <label htmlFor="fromAmount" className="text-sm font-medium text-gray-400">Sell</label>
@@ -455,12 +477,14 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         onChange={handleFromValueChange}
                     />
                     <div className="flex items-center">
-                        <button
-                            onClick={handleMaxClick}
-                            className="mr-2 px-3 py-1 bg-zinc-700 text-white text-xs font-semibold rounded-lg hover:bg-zinc-600 transition-colors duration-200"
-                        >
-                            MAX
-                        </button>
+                        {walletConnected && fromTokenBalance && fromTokenBalance.value > 0n && (
+                            <button
+                                onClick={handleMaxClick}
+                                className="mr-2 px-3 py-1 bg-zinc-700 text-white text-xs font-semibold rounded-lg hover:bg-zinc-600 transition-colors duration-200"
+                            >
+                                MAX
+                            </button>
+                        )}
                         <button
                             className="flex items-center bg-zinc-700 hover:bg-zinc-600 rounded-full px-3 py-2 text-white text-lg font-bold transition-colors duration-200"
                             onClick={() => setIsFromTokenModalOpen(true)}
@@ -471,9 +495,10 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         </button>
                     </div>
                 </div>
-                <div className="text-gray-500 text-sm mt-1">$0</div>
+                <div className="text-gray-500 text-sm mt-1">$0</div> {/* Assuming $0 as placeholder for USD value */}
             </div>
 
+            {/* Swap Arrow Button */}
             <div className="flex justify-center -my-2 z-10 relative">
                 <button
                     className="p-2 bg-zinc-700 rounded-full border-4 border-zinc-900 text-white shadow-lg hover:bg-zinc-600 transition-colors duration-200 transform hover:rotate-180"
@@ -483,6 +508,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 </button>
             </div>
 
+            {/* Buy Panel */}
             <div className="mb-6 bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
                 <div className="flex justify-between items-center mb-2">
                     <label htmlFor="toAmount" className="text-sm font-medium text-gray-400">Buy</label>
@@ -508,39 +534,10 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
                     </button>
                 </div>
-                <div className="text-gray-500 text-sm mt-1">$0</div>
+                <div className="text-gray-500 text-sm mt-1">$0</div> {/* Assuming $0 as placeholder for USD value */}
             </div>
 
-            <div className="text-sm text-gray-400 space-y-2 mb-6">
-                <div className="flex justify-between">
-                    <span>Price Impact</span>
-                    <span className={classNames(
-                        parseFloat(priceImpact) > 5 ? 'text-red-500' : 'text-green-400',
-                        'font-semibold'
-                    )}>{priceImpact}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span>Slippage Tolerance</span>
-                    <input
-                        type="number"
-                        min="0.1"
-                        max="10"
-                        step="0.1"
-                        value={slippage}
-                        onChange={(e) => setSlippage(e.target.value)}
-                        className="bg-gray-800 text-white rounded-md px-2 py-1 w-20 text-right focus:outline-none focus:ring-2 focus:ring-fuchsia-500 border border-gray-600"
-                    />%
-                </div>
-                <div className="flex justify-between">
-                    <span>Route</span>
-                    <span className="text-white font-semibold">WETH {'>'} USDC</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Liquidity Provider Fee</span>
-                    <span className="text-white font-semibold">0.3%</span>
-                </div>
-            </div>
-
+            {/* Connect Wallet / Swap Button (with conditional rendering for Approve/Swap) */}
             {!walletConnected ? (
                 <button
                     onClick={handleConnectWallet}
@@ -548,7 +545,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 >
                     Connect wallet
                 </button>
-            ) : needsApproval ? (
+            ) : needsApproval && fromToken.address !== '0x0000000000000000000000000000000000000000' ? (
                 <button
                     onClick={handleApprove}
                     disabled={isApproveLoading || !approveSimulateData?.request}
@@ -566,6 +563,20 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 </button>
             )}
 
+            {/* Transaction Status Modal (Assuming this component exists) */}
+            {isTxStatusModalOpen && (
+                <TxStatusModal
+                    isOpen={isTxStatusModalOpen}
+                    onClose={closeTxStatusModal}
+                    status={modalStatus}
+                    title={modalTitle}
+                    message={modalMessage}
+                    txHash={modalTxHash}
+                    explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
+                />
+            )}
+
+            {/* From Token Selection Modal */}
             <Transition appear show={isFromTokenModalOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50 font-['Exo']" onClose={() => setIsFromTokenModalOpen(false)}>
                     <Transition.Child
@@ -614,6 +625,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 </Dialog>
             </Transition>
 
+            {/* To Token Selection Modal */}
             <Transition appear show={isToTokenModalOpen} as={Fragment}>
                 <Dialog as="div" className="relative z-50 font-['Exo']" onClose={() => setIsToTokenModalOpen(false)}>
                     <Transition.Child
@@ -661,16 +673,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     </div>
                 </Dialog>
             </Transition>
-
-            <TxStatusModal
-                isOpen={isTxStatusModalOpen}
-                onClose={closeTxStatusModal}
-                status={modalStatus}
-                title={modalTitle}
-                message={modalMessage}
-                txHash={modalTxHash}
-                explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
-            />
         </div>
     );
 };
