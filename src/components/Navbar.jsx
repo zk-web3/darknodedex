@@ -24,11 +24,14 @@ export default function Navbar() {
     <nav className="bg-darknode-bg-light shadow-lg font-rajdhani">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-10 items-center justify-between">
-          <div className="flex flex-1 items-center justify-start">
-            <div className="flex flex-shrink-0 items-center mr-6">
-              <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
-            </div>
-            <div className="flex space-x-6">
+          {/* Logo Section */}
+          <div className="flex flex-shrink-0 items-center">
+            <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
+          </div>
+
+          {/* Navigation Links Section (Centered) */}
+          <div className="flex flex-grow justify-center">
+            <div className="flex space-x-12">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -37,7 +40,7 @@ export default function Navbar() {
                     item.current
                       ? 'text-darknode-neon-cyan border-b-2 border-darknode-neon-cyan'
                       : 'text-gray-300 hover:text-white hover:border-b-2 hover:border-darknode-neon-purple',
-                    'px-2 py-1 text-sm font-medium transition-colors duration-200'
+                    'px-3 py-2 text-base font-medium transition-colors duration-200'
                   )}
                   aria-current={item.current ? 'page' : undefined}
                 >
@@ -46,7 +49,9 @@ export default function Navbar() {
               ))}
             </div>
           </div>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+
+          {/* Connect Wallet Button Section */}
+          <div className="flex items-center">
             {
                 isConnected ? (
                     <div className="flex items-center space-x-2">
