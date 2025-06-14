@@ -112,7 +112,7 @@ const SwapCard = ({
     },
   });
 
-  const erc20TokenContracts = tokens.filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').map(token => ({
+  const erc20TokenContracts = (tokens ?? []).filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').map(token => ({
     address: token.address,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -126,7 +126,7 @@ const SwapCard = ({
       watch: true,
       select: (data) => {
         const balancesMap = {};
-        tokens.filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').forEach((token, index) => {
+        (tokens ?? []).filter(token => token.address && token.address !== '0x0000000000000000000000000000000000000000').forEach((token, index) => {
           const balance = data[index]?.result;
           if (balance !== undefined) {
             balancesMap[token.address] = formatUnits(balance, token.decimals);
@@ -414,7 +414,7 @@ const SwapCard = ({
   };
 
   const renderTokenList = (isFrom) => {
-    const filteredTokens = tokens.filter(token =>
+    const filteredTokens = (tokens ?? []).filter(token =>
       token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
     );

@@ -5,12 +5,14 @@ import { baseSepolia } from 'wagmi/chains';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import { tokens, ERC20_ABI } from '../src/utils/tokens';
+import { useConnectorClient } from 'wagmi';
 
 const TokensContent = () => {
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
   const [tokenBalances, setTokenBalances] = useState({});
   const [loadingBalances, setLoadingBalances] = useState(true);
+  const { data: walletClient } = useConnectorClient();
 
   const isBaseSepolia = chain?.id === baseSepolia.id;
 
@@ -53,12 +55,12 @@ const TokensContent = () => {
   }, [fetchAllBalances]);
 
   const addTokenToMetaMask = async (token) => {
-    if (!window.ethereum) {
-      toast.error("MetaMask is not installed.");
+    if (!walletClient) {
+      toast.error("Wallet not connected or no client available.");
       return;
     }
     try {
-      const wasAdded = await window.ethereum.request({
+      const wasAdded = await walletClient.request({
         method: 'wallet_watchAsset',
         params: {
           type: 'ERC20',
@@ -71,13 +73,13 @@ const TokensContent = () => {
       });
 
       if (wasAdded) {
-        toast.success(`${token.symbol} has been added to MetaMask!`);
+        toast.success(`${token.symbol} has been added to wallet!`);
       } else {
-        toast.error(`Failed to add ${token.symbol} to MetaMask.`);
+        toast.error(`Failed to add ${token.symbol} to wallet.`);
       }
     } catch (error) {
-      console.error("Error adding token to MetaMask:", error);
-      toast.error("Failed to add token to MetaMask.");
+      console.error("Error adding token to wallet:", error);
+      toast.error("Failed to add token to wallet.");
     }
   };
 
