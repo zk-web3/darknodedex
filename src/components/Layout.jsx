@@ -3,10 +3,14 @@ import Footer from './Footer';
 import { useAccount, useConnect, useSwitchChain } from 'wagmi';
 import { toast } from 'react-hot-toast';
 import { injected } from 'wagmi/connectors';
+import React, { useState, useEffect } from 'react';
 
 const BASE_SEPOLIA_CHAIN_ID = 84532; // Base Sepolia Chain ID
 
 const Layout = ({ children }) => {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
     const { address, isConnected, chain } = useAccount();
     const { connect } = useConnect();
     const { switchChain } = useSwitchChain();
@@ -18,13 +22,15 @@ const Layout = ({ children }) => {
             } else {
                 toast.error("Please connect to Base Sepolia Network.");
                 if (switchChain) {
-                    switchChain(BASE_SEPOLIA_CHAIN_ID);
+                    switchChain({ chainId: BASE_SEPOLIA_CHAIN_ID }); // Use chainId for switchChain
                 }
             }
         } else {
             connect({ connector: injected() });
         }
     };
+
+    if (!mounted) return null; // Render nothing on the server or until mounted
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-900 font-inter text-white">
