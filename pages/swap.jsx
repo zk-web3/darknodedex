@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import Layout from '../src/components/Layout';
 import dynamic from 'next/dynamic';
 import { tokens } from '../src/utils/tokens';
@@ -8,10 +7,8 @@ import { ERC20_ABI } from '../src/utils/tokens';
 
 const DynamicSwapCard = dynamic(() => import('../src/components/SwapCard'), { ssr: false });
 
-const SwapPage = () => {
-    const { address, isConnected } = useAccount();
-    const { data: publicClient } = usePublicClient();
-    const { data: walletClient } = useWalletClient();
+const SwapPage = ({ isConnected, address, chain, handleConnectWallet }) => {
+    const publicClient = UNISWAP_QUOTER_ADDRESS;
 
     const uniswapRouter = { address: UNISWAP_ROUTER_ADDRESS, abi: UNISWAP_ROUTER_ABI };
     const uniswapQuoter = { address: UNISWAP_QUOTER_ADDRESS, abi: UNISWAP_QUOTER_ABI };
@@ -28,6 +25,7 @@ const SwapPage = () => {
                     uniswapQuoter={uniswapQuoter}
                     uniswapRouterAbi={UNISWAP_ROUTER_ABI}
                     erc20Abi={ERC20_ABI}
+                    handleConnectWallet={handleConnectWallet}
                 />
             </div>
         </Layout>

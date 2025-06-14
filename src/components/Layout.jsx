@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
             } else {
                 toast.error("Please connect to Base Sepolia Network.");
                 if (switchChain) {
-                    switchChain({ chainId: BASE_SEPOLIA_CHAIN_ID }); // Use chainId for switchChain
+                    switchChain({ chainId: BASE_SEPOLIA_CHAIN_ID });
                 }
             }
         } else {
@@ -30,13 +30,23 @@ const Layout = ({ children }) => {
         }
     };
 
-    if (!mounted) return null; // Render nothing on the server or until mounted
+    if (!mounted) return null;
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-900 font-inter text-white">
             <Navbar isConnected={isConnected} address={address} chain={chain} handleConnectWallet={handleConnectWallet} />
             <main className="flex-grow container mx-auto px-4 py-8">
-                {children}
+                {React.Children.map(children, child => {
+                    if (React.isValidElement(child)) {
+                        return React.cloneElement(child, {
+                            isConnected,
+                            address,
+                            chain,
+                            handleConnectWallet,
+                        });
+                    }
+                    return child;
+                })}
             </main>
             <Footer />
         </div>
