@@ -266,24 +266,37 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             <div className="w-full max-w-md p-6 bg-darknode-container rounded-lg shadow-glass-neumorphic border border-darknode-border-neon">
                 <h2 className="text-white text-2xl font-bold text-center mb-6">Swap</h2>
 
-                <div className="relative mb-4 bg-darknode-alt-container rounded-lg p-4">
+                <div className="mb-4 relative">
                     <div className="flex justify-between items-center mb-2">
-                        <label htmlFor="from-token-input" className="text-gray-400 text-sm">Sell</label>
-                        <span className="text-gray-400 text-sm">Balance: {fromTokenBalance ? parseFloat(formatUnits(fromTokenBalance.value, fromTokenBalance.decimals)).toFixed(4) : '0.0000'} {fromToken.symbol}</span>
+                        <label htmlFor="from-token-input" className="text-sm font-medium text-gray-400">You sell</label>
+                        {walletConnected && fromTokenBalance && (
+                            <span className="text-sm text-gray-400">
+                                Balance: {parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(4)}
+                                <button 
+                                    onClick={() => setFromValue(formatUnits(fromTokenBalance.value, fromToken.decimals))}
+                                    className="ml-2 px-2 py-1 bg-purple-600/20 text-darknode-neon-purple text-xs rounded-md hover:bg-purple-600/40 transition-colors"
+                                >
+                                    Max
+                                </button>
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center">
                         <input
                             id="from-token-input"
                             type="number"
                             placeholder="0.0"
+                            className="w-full p-2 bg-transparent text-white text-xl font-bold focus:outline-none"
                             value={fromValue}
                             onChange={handleFromValueChange}
-                            className="w-full text-3xl font-bold bg-transparent text-white focus:outline-none placeholder-gray-600"
                         />
-                        <Menu as="div" className="relative ml-3">
+                        {/* From Token Select */}
+                        <Menu as="div" className="relative inline-block text-left z-10">
                             <div>
-                                <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-xl text-lg transition duration-200 focus:outline-none">
-                                    <img src="/path/to/placeholder-eth-icon.svg" alt="ETH" className="h-5 w-5 rounded-full" />{fromToken.symbol} <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+                                <Menu.Button className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-darknode-neon-purple">
+                                    <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 rounded-full mr-2" />
+                                    {fromToken.symbol}
+                                    <ChevronDownIcon className="-mr-1 ml-2 h-5 w-5" aria-hidden="true" />
                                 </Menu.Button>
                             </div>
                             <Transition
@@ -295,56 +308,74 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                                 leaveFrom="transform opacity-100 scale-100"
                                 leaveTo="transform opacity-0 scale-95"
                             >
-                                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                    {tokens.map((token) => (
-                                        <Menu.Item key={token.symbol}>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => { setFromToken(token); setToValue(''); }}
-                                                    className={classNames(
-                                                        active ? 'bg-gray-700 text-white' : 'text-gray-300',
-                                                        'block w-full text-left px-4 py-2 text-sm'
-                                                    )}
-                                                >
-                                                    {token.symbol}
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
+                                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto custom-scrollbar">
+                                    <div className="py-1">
+                                        {tokens.map((token) => (
+                                            <Menu.Item key={token.address}>
+                                                {({ active }) => (
+                                                    <button
+                                                        onClick={() => setFromToken(token)}
+                                                        className={classNames(
+                                                            active ? 'bg-gray-600 text-white' : 'text-gray-200',
+                                                            'flex items-center px-4 py-2 text-sm w-full text-left'
+                                                        )}
+                                                    >
+                                                        <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 rounded-full mr-2" />
+                                                        {token.symbol}
+                                                        <p className="ml-auto text-gray-400 text-xs">
+                                                            Balance: {fromTokenBalance && token.address === fromToken.address ? parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(4) : '0.0000'}
+                                                        </p>
+                                                    </button>
+                                                )}
+                                            </Menu.Item>
+                                        ))}
+                                    </div>
                                 </Menu.Items>
                             </Transition>
                         </Menu>
                     </div>
-                    <div className="text-gray-500 text-sm mt-1">$0.00</div>
                 </div>
 
-                <div className="flex justify-center my-2">
+                <div className="flex justify-center -my-2">
                     <button
                         onClick={handleSwapTokens}
-                        className="p-2 rounded-full bg-darknode-alt-container hover:bg-gray-700 text-darknode-neon-cyan focus:outline-none"
+                        className="z-20 p-2 bg-gray-700 rounded-full border-4 border-gray-900 shadow-lg text-darknode-neon-purple hover:text-white hover:bg-darknode-neon-purple transition-all duration-200"
                     >
                         <ArrowDownIcon className="h-5 w-5" />
                     </button>
                 </div>
 
-                <div className="relative mb-4 bg-darknode-alt-container rounded-lg p-4">
+                <div className="mb-4 relative">
                     <div className="flex justify-between items-center mb-2">
-                        <label htmlFor="to-token-input" className="text-gray-400 text-sm">Buy</label>
-                        <span className="text-gray-400 text-sm">Balance: {toTokenBalance ? parseFloat(formatUnits(toTokenBalance.value, toTokenBalance.decimals)).toFixed(4) : '0.0000'} {toToken.symbol}</span>
+                        <label htmlFor="to-token-input" className="text-sm font-medium text-gray-400">You buy</label>
+                        {walletConnected && toTokenBalance && (
+                            <span className="text-sm text-gray-400">
+                                Balance: {parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(4)}
+                                <button 
+                                    onClick={() => setToValue(formatUnits(toTokenBalance.value, toToken.decimals))}
+                                    className="ml-2 px-2 py-1 bg-purple-600/20 text-darknode-neon-purple text-xs rounded-md hover:bg-purple-600/40 transition-colors"
+                                >
+                                    Max
+                                </button>
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center">
                         <input
                             id="to-token-input"
-                            type="text"
+                            type="number"
                             placeholder="0.0"
+                            className="w-full p-2 bg-transparent text-white text-xl font-bold focus:outline-none"
                             value={toValue}
-                            readOnly
-                            className="w-full text-3xl font-bold bg-transparent text-white focus:outline-none placeholder-gray-600"
+                            readOnly // Output field
                         />
-                        <Menu as="div" className="relative ml-3">
+                        {/* To Token Select */}
+                        <Menu as="div" className="relative inline-block text-left z-10">
                             <div>
-                                <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-xl text-lg transition duration-200 focus:outline-none">
-                                    <img src="/path/to/placeholder-sushi-icon.svg" alt="SUSHI" className="h-5 w-5 rounded-full" />{toToken.symbol} <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
+                                <Menu.Button className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-darknode-neon-purple">
+                                    <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 rounded-full mr-2" />
+                                    {toToken.symbol}
+                                    <ChevronDownIcon className="-mr-1 ml-2 h-5 w-5" aria-hidden="true" />
                                 </Menu.Button>
                             </div>
                             <Transition
@@ -356,27 +387,32 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                                 leaveFrom="transform opacity-100 scale-100"
                                 leaveTo="transform opacity-0 scale-95"
                             >
-                                <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                    {tokens.map((token) => (
-                                        <Menu.Item key={token.symbol}>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => { setToToken(token); setToValue(''); }}
-                                                    className={classNames(
-                                                        active ? 'bg-gray-700 text-white' : 'text-gray-300',
-                                                        'block w-full text-left px-4 py-2 text-sm'
-                                                    )}
-                                                >
-                                                    {token.symbol}
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
+                                <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto custom-scrollbar">
+                                    <div className="py-1">
+                                        {tokens.map((token) => (
+                                            <Menu.Item key={token.address}>
+                                                {({ active }) => (
+                                                    <button
+                                                        onClick={() => setToToken(token)}
+                                                        className={classNames(
+                                                            active ? 'bg-gray-600 text-white' : 'text-gray-200',
+                                                            'flex items-center px-4 py-2 text-sm w-full text-left'
+                                                        )}
+                                                    >
+                                                        <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 rounded-full mr-2" />
+                                                        {token.symbol}
+                                                        <p className="ml-auto text-gray-400 text-xs">
+                                                            Balance: {toTokenBalance && token.address === toToken.address ? parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(4) : '0.0000'}
+                                                        </p>
+                                                    </button>
+                                                )}
+                                            </Menu.Item>
+                                        ))}
+                                    </div>
                                 </Menu.Items>
                             </Transition>
                         </Menu>
                     </div>
-                    <div className="text-gray-500 text-sm mt-1">$0.00</div>
                 </div>
 
                 {walletConnected ? (

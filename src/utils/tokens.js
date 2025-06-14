@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-
 // Minimal ERC20 ABI for common functions (balanceOf, approve, transferFrom, decimals, symbol, name)
 export const ERC20_ABI = [
   // Read-Only Functions
@@ -20,32 +18,21 @@ export const tokens = [
     symbol: 'WETH',
     address: '0x4200000000000000000000000000000000000006', // WETH on Base Sepolia
     decimals: 18,
-    logoURI: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295', // Real WETH logo
-  },
-  {
-    name: 'Uniswap',
-    symbol: 'UNI',
-    address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', // Base Sepolia UNI (example, may need real deployment)
-    decimals: 18,
-  },
-  {
-    name: 'Chainlink',
-    symbol: 'LINK',
-    address: '0x779877A7B0D9E8603169DdbD7836e478b4624789', // Base Sepolia LINK (example, may need real deployment)
-    decimals: 18,
+    logoURI: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295',
   },
   {
     name: 'USD Coin',
     symbol: 'USDC',
     address: '0x833589fCD6eDb6E08f954C3dc3B9D50edEe08467', // USDC on Base Sepolia
     decimals: 6,
-    logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389', // Real USDC logo
+    logoURI: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389',
   },
   {
     name: 'DarkNode Token',
     symbol: 'DN',
     address: '0x7a232f05a5a6D0803534b7f8B47C569D9E06716a', // Placeholder - REPLACE WITH YOUR DEPLOYED DN TOKEN ADDRESS
     decimals: 18,
-    logoURI: 'https://via.placeholder.com/24/purple/white?text=DN', // Custom DN token logo
+    logoURI: 'https://via.placeholder.com/24/purple/white?text=DN',
   },
+  // Add more tokens here if they are officially deployed and have liquidity on Base Sepolia Uniswap V3
 ]; 
