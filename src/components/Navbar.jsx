@@ -5,7 +5,6 @@ import { injected } from 'wagmi/connectors';
 
 const navigation = [
   { name: 'Trade', href: '/swap', current: true },
-  { name: 'Explore', href: '/', current: false },
   { name: 'Positions', href: '/liquidity', current: false },
   { name: 'Stake', href: '/tokens', current: false },
 ];
@@ -22,8 +21,8 @@ export default function Navbar() {
 
   return (
     <nav className="bg-darknode-bg-light shadow-lg font-rajdhani">
-      <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
-        <div className="relative flex h-10 items-center justify-between">
+      <div className="mx-auto max-w-7xl">
+        <div className="relative flex h-16 items-center justify-between px-8">
           {/* Logo Section */}
           <div className="flex flex-shrink-0 items-center">
             <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
