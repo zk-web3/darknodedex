@@ -20,6 +20,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const [slippage, setSlippage] = useState('0.5'); // Default slippage
     const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false); // State for token selection modal
     const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false); // State for token selection modal
+    const [needsApproval, setNeedsApproval] = useState(false); // Moved needsApproval declaration to the top
 
     // Modal for transaction status
     const [isTxStatusModalOpen, setIsTxStatusModalOpen] = useState(false);
@@ -225,8 +226,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
         }
     }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
-
-    const [needsApproval, setNeedsApproval] = useState(false); // Declare needsApproval here
 
     const checkApproval = useCallback(async () => {
         if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
@@ -502,7 +501,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 title={modalTitle}
                 message={modalMessage}
                 txHash={modalTxHash}
-                explorerUrl={BASE_SEPOLIA_EXPLER_URL}
+                explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
             />
 
             {/* Token Selection Modals */}
