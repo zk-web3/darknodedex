@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { Fragment } from 'react';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
+import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
 
 const navigation = [
   { name: 'Home', href: '/', current: false },
@@ -17,6 +18,11 @@ function classNames(...classes) {
 }
 
 export default function Navbar() {
+    const { address, isConnected } = useAccount();
+    const { connect } = useConnect();
+    const { disconnect } = useDisconnect();
+    const { data: ensName } = useEnsName({ address });
+
   return (
     <Disclosure as="nav" className="bg-darknode-bg-light shadow-lg font-rajdhani">
       {({ open }) => (
@@ -62,7 +68,28 @@ export default function Navbar() {
               </div>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
                 {/* Connect Wallet Button */}
-                <ConnectButton label="Connect Wallet" chainStatus="icon" showBalance={{ smallScreen: false, largeScreen: true }} />
+                {
+                    isConnected ? (
+                        <div className="flex items-center space-x-2">
+                            <span className="text-gray-300 text-sm">
+                                {ensName || `${address.slice(0, 6)}...${address.slice(-4)}`}
+                            </span>
+                            <button
+                                onClick={() => disconnect()}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md text-sm transition duration-200"
+                            >
+                                Disconnect
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => connect({ connector: new MetaMaskConnector() })}
+                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-md text-sm transition duration-200"
+                        >
+                            Connect MetaMask
+                        </button>
+                    )
+                }
 
                 {/* Profile dropdown (if needed) */}
                 {/* <Menu as="div" className="relative ml-3">
