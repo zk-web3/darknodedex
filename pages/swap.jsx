@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAccount, useProvider, useSigner } from 'wagmi';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import Layout from '../src/components/Layout';
 import SwapCard from '../src/components/SwapCard';
 import TransactionHistory from '../src/components/TransactionHistory';
@@ -10,8 +10,8 @@ import { ERC20_ABI } from '../src/utils/tokens';
 
 const SwapPage = () => {
     const { address, isConnected } = useAccount();
-    const { data: provider } = useProvider();
-    const { data: signer } = useSigner();
+    const { data: publicClient } = usePublicClient();
+    const { data: walletClient } = useWalletClient();
 
     const uniswapRouter = { address: UNISWAP_ROUTER_ADDRESS, abi: UNISWAP_ROUTER_ABI };
     const uniswapQuoter = { address: UNISWAP_QUOTER_ADDRESS, abi: UNISWAP_QUOTER_ABI };
@@ -24,8 +24,8 @@ const SwapPage = () => {
                 <SwapCard
                     walletConnected={isConnected}
                     address={address}
-                    provider={provider}
-                    signer={signer}
+                    provider={publicClient}
+                    signer={walletClient}
                     tokens={tokens}
                     uniswapRouter={uniswapRouter}
                     uniswapQuoter={uniswapQuoter}
