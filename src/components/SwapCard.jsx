@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
-import { ethers } from 'ethers';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
@@ -138,7 +137,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         address: fromToken.address,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [uniswapRouter.address, ethers.MaxUint256],
+        args: [uniswapRouter.address, BigInt(2n**256n - 1n)],
         query: { enabled: walletConnected && amountToApproveBigInt > 0n },
     });
     const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();

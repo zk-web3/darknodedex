@@ -1,27 +1,17 @@
-import React, { useState } from 'react';
-import Layout from '../src/components/Layout';
-import dynamic from 'next/dynamic'; // Import dynamic
-// import { useAccount } from 'wagmi'; // Removed direct import
+import React, { useCallback, useEffect, useState } from 'react';
+import { useAccount, usePublicClient } from 'wagmi';
+import { formatUnits } from 'viem';
+import { baseSepolia } from 'wagmi/chains';
+import { toast } from 'react-hot-toast';
 import Link from 'next/link';
+import { tokens, ERC20_ABI } from '../src/utils/tokens';
 
-// Dynamically import useAccount to ensure it's rendered client-side
-const DynamicLiquidityContent = dynamic(() => import('./LiquidityContent'), { ssr: false });
-
-const LiquidityPage = () => {
-    // The actual content of LiquidityPage will be in LiquidityContent.jsx
-    return (
-        <Layout>
-            <DynamicLiquidityContent />
-        </Layout>
-    );
-};
-
-export default LiquidityPage;
-
-// Create a new component for the actual liquidity page content
 const LiquidityContent = () => {
-    const { isConnected } = useAccount(); // Use useAccount inside client-side component
+    const { address, isConnected, chain } = useAccount();
+    const publicClient = usePublicClient();
     const [activeTab, setActiveTab] = useState('add'); // 'add' or 'remove'
+
+    const isBaseSepolia = chain?.id === baseSepolia.id;
 
     return (
         <div className="flex flex-col items-center justify-start min-h-[calc(100vh-80px)] py-8 px-4 font-rajdhani">
@@ -125,4 +115,6 @@ const LiquidityContent = () => {
             )}
         </div>
     );
-}; 
+};
+
+export default LiquidityContent; 

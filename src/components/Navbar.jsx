@@ -66,9 +66,9 @@ export default function Navbar({ isConnected, address, chain, handleConnectWalle
           <div className="flex items-center space-x-4">
             {/* Placeholder for Network Selection (Eth in SushiSwap image) */}
             <div className="flex-shrink-0">
-                <button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200">
+                <button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200 cursor-default">
                     {/* Placeholder for Network Icon (e.g., Ethereum logo) */}
-                    <span className="text-sm">Ethereum</span>
+                    <span className="text-sm">Base Sepolia</span>
                 </button>
             </div>
             {
