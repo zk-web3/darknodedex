@@ -1,154 +1,104 @@
 import Link from 'next/link';
-import { Fragment, useState, useEffect } from 'react';
-import { Menu, Transition } from '@headlessui/react';
-import { ChevronDownIcon } from '@heroicons/react/20/solid';
+import { FiSettings, FiExternalLink, FiCopy } from 'react-icons/fi';
+import { useDisconnect } from 'wagmi';
+import { baseSepolia } from 'wagmi/chains';
+import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 
+// Helper function for conditional class joining
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-const navigation = [
-  { name: 'Trade', href: '/swap', current: true },
-  { name: 'Positions', href: '/liquidity', current: false },
-  { name: 'Stake', href: '/tokens', current: false },
-];
+export default function Navbar({ isConnected, address, handleConnectWallet, chain }) {
+  const { disconnect } = useDisconnect();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-export default function Navbar({ isConnected, address, chain, handleConnectWallet }) {
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-    const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.basescan.org";
+  const displayAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connect Wallet';
+  const explorerUrl = chain?.blockExplorers?.default?.url;
 
-    const ensName = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  const handleCopyAddress = () => {
+    if (address) {
+      navigator.clipboard.writeText(address);
+      toast.success('Address copied!');
+    }
+  };
 
-    const handleCopyAddress = () => {
-        if (address) {
-            navigator.clipboard.writeText(address);
-            toast.success("Address copied!");
-        }
-    };
-
-    const handleViewOnExplorer = () => {
-        if (address && BASE_SEPOLIA_EXPLORER_URL) {
-            window.open(`${BASE_SEPOLIA_EXPLORER_URL}/address/${address}`, '_blank');
-        }
-    };
+  if (!mounted) {
+    return null; // Render nothing on the server
+  }
 
   return (
-    <nav className="bg-darknode-bg-light shadow-lg font-rajdhani">
-      <div className="mx-auto max-w-7xl">
-        <div className="relative flex h-20 items-center justify-between px-8">
-          {/* Logo Section */}
-          <div className="flex flex-shrink-0 items-center">
-            <span className="text-darknode-neon-purple text-2xl font-orbitron font-bold">DN</span>
+    <nav className="bg-dark-secondary bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg py-4 px-8 flex items-center justify-between z-20 sticky top-0 h-20 border-b border-neon-purple/50">
+      <div className="flex items-center">
+        <Link href="/">
+          <div className="text-3xl font-bold text-neon-pink cursor-pointer transition-colors duration-300 hover:text-neon-blue mr-8">
+            DN
           </div>
+        </Link>
+        <div className="flex space-x-6 text-lg">
+          <Link href="/swap" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md">
+            Swap
+          </Link>
+          <Link href="/liquidity" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md">
+            Liquidity
+          </Link>
+          <Link href="/tokens" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md">
+            Tokens
+          </Link>
+          <Link href="/about" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md">
+            About
+          </Link>
+        </div>
+      </div>
 
-          {/* Navigation Links Section (Centered) */}
-          <div className="flex flex-grow justify-center">
-            <div className="flex space-x-8">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={classNames(
-                    item.current
-                      ? 'text-darknode-neon-cyan'
-                      : 'text-gray-300 hover:text-white',
-                    'px-4 py-3 text-lg font-medium transition-colors duration-200'
-                  )}
-                  aria-current={item.current ? 'page' : undefined}
+      <div className="flex items-center space-x-4">
+        <div className="bg-dark-accent text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center">
+          <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+          Base Sepolia
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => { if (!isConnected) handleConnectWallet(); else setIsDropdownOpen(!isDropdownOpen); }}
+            className="bg-neon-pink hover:bg-neon-blue text-dark-background font-bold py-2 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg neon-glow-pink"
+          >
+            {displayAddress}
+          </button>
+          {isConnected && isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-dark-secondary rounded-lg shadow-xl py-2 z-30 border border-neon-purple/50">
+              <button
+                onClick={handleCopyAddress}
+                className="flex items-center w-full px-4 py-2 text-sm text-neon-pink hover:bg-dark-background/50"
+              >
+                <FiCopy className="mr-2" /> Copy Address
+              </button>
+              {explorerUrl && (
+                <a
+                  href={`${explorerUrl}/address/${address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center w-full px-4 py-2 text-sm text-neon-pink hover:bg-dark-background/50"
                 >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Connect Wallet Button / Connected Wallet Info */}
-          {mounted && (
-            <div className="flex items-center space-x-4">
-              {/* Placeholder for Network Selection (Eth in SushiSwap image) */}
-              <div className="flex-shrink-0">
-                  <button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200 cursor-default">
-                      <span className="text-sm">Base Sepolia</span>
-                  </button>
-              </div>
-              {
-                  isConnected ? (
-                      <Menu as="div" className="relative ml-3">
-                        <div>
-                          <Menu.Button className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-purple-500">
-                            <span className="text-sm">
-                                {ensName}
-                            </span>
-                            <ChevronDownIcon className="h-5 w-5" aria-hidden="true" />
-                          </Menu.Button>
-                        </div>
-                        <Transition
-                          as={Fragment}
-                          enter="transition ease-out duration-100"
-                          enterFrom="transform opacity-0 scale-95"
-                          enterTo="transform opacity-100 scale-100"
-                          leave="transition ease-in duration-75"
-                          leaveFrom="transform opacity-100 scale-100"
-                          leaveTo="transform opacity-0 scale-95"
-                        >
-                          <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={() => { /* Disconnect logic now handled by handleConnectWallet */ }}
-                                  className={classNames(
-                                    active ? 'bg-gray-700 text-white' : 'text-gray-300',
-                                    'block w-full text-left px-4 py-2 text-sm'
-                                  )}
-                                >
-                                  Disconnect Wallet
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={handleCopyAddress}
-                                  className={classNames(
-                                    active ? 'bg-gray-700 text-white' : 'text-gray-300',
-                                    'block w-full text-left px-4 py-2 text-sm'
-                                  )}
-                                >
-                                  Copy Address
-                                </button>
-                              )}
-                            </Menu.Item>
-                            <Menu.Item>
-                              {({ active }) => (
-                                <button
-                                  onClick={handleViewOnExplorer}
-                                  className={classNames(
-                                    active ? 'bg-gray-700 text-white' : 'text-gray-300',
-                                    'block w-full text-left px-4 py-2 text-sm'
-                                  )}
-                                >
-                                  View on Explorer
-                                </button>
-                              )}
-                            </Menu.Item>
-                          </Menu.Items>
-                        </Transition>
-                      </Menu>
-                  ) : (
-                      <button
-                          onClick={handleConnectWallet}
-                          className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md text-sm transition duration-200"
-                      >
-                          Connect Wallet
-                      </button>
-                  )
-              }
+                  <FiExternalLink className="mr-2" /> View on Explorer
+                </a>
+              )}
+              <button
+                onClick={() => { disconnect(); toast.success('Wallet Disconnected!'); setIsDropdownOpen(false); }}
+                className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-dark-background/50 border-t border-neon-purple/50 mt-1 pt-2"
+              >
+                Disconnect
+              </button>
             </div>
           )}
         </div>
+        <button className="text-neon-pink hover:text-neon-blue transition-colors duration-300">
+          <FiSettings size={24} />
+        </button>
       </div>
     </nav>
   );

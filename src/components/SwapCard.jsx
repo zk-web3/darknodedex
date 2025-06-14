@@ -8,6 +8,18 @@ import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap'; // Make sure this 
 import { toast } from 'react-hot-toast'; // Assuming toast is configured
 import { FiSettings } from 'react-icons/fi'; // For the settings icon
 import { ArrowsUpDownIcon } from '@heroicons/react/24/outline'; // For the swap arrow
+import { IoSwapVertical } from 'react-icons/io5';
+import { MaxUint256 } from '@ethersproject/constants';
+import {
+  USDC_TOKEN, 
+  WETH_TOKEN, 
+  DN_TOKEN,
+  TOKENS_BY_ADDRESS,
+  WETH_ABI,
+  USDC_ABI,
+  DN_ABI
+} from '../utils/tokens';
+import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI } from '../utils/uniswap';
 
 // Inline classNames utility to avoid module not found errors
 function classNames(...classes) {
@@ -503,7 +515,7 @@ const SwapCard = ({
           className="bg-[#3B3B3B] p-2 rounded-full hover:rotate-180 transition-transform duration-300 cursor-pointer shadow-md"
           onClick={handleSwapTokens}
         >
-          <ArrowsUpDownIcon className="w-4 h-4 text-white" />
+          <IoSwapVertical className="w-4 h-4 text-white" />
         </div>
       </div>
 

@@ -1,59 +1,75 @@
 import Navbar from './Navbar';
 import Footer from './Footer';
-// Removed Wagmi imports from here as they are now in _app.jsx
-// import { useAccount, useConnect, useSwitchChain } from 'wagmi';
+import { useAccount, useConnect, useSwitchChain } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 import { toast } from 'react-hot-toast';
-// import { injected } from 'wagmi/connectors'; // Not needed here anymore
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { baseSepolia } from 'wagmi/chains';
 
-// const BASE_SEPOLIA_CHAIN_ID = 84532; // Base Sepolia Chain ID - now handled by handleConnectWallet prop
-
-const Layout = ({ children, isConnected, address, chain, handleConnectWallet }) => {
+export default function Layout({ children }) {
+    const { address, isConnected, chain } = useAccount();
+    const { connect } = useConnect();
+    const { switchChain } = useSwitchChain();
     const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
 
-    // Wagmi hooks are now passed as props from _app.jsx
-    // const { address, isConnected, chain } = useAccount();
-    // const { connect } = useConnect();
-    // const { switchChain } = useSwitchChain();
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-    // handleConnectWallet is now passed as a prop from _app.jsx
-    // const handleConnectWallet = () => {
-    //     if (isConnected) {
-    //         if (chain?.id === BASE_SEPOLIA_CHAIN_ID) {
-    //             toast.success("You Are Already On Base Sepolia");
-    //         } else {
-    //             toast.error("Please connect to Base Sepolia Network.");
-    //             if (switchChain) {
-    //                 switchChain({ chainId: BASE_SEPOLIA_CHAIN_ID });
-    //             }
-    //         }
-    //     } else {
-    //         connect({ connector: injected() });
-    //     }
-    // };
+    const handleConnectWallet = async () => {
+        if (isConnected) {
+            if (chain?.id !== baseSepolia.id) {
+                try {
+                    await switchChain({
+                        chainId: baseSepolia.id,
+                    });
+                    toast.success('Switched to Base Sepolia Network!');
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        toast.error('Base Sepolia network not found. Please add it to MetaMask.');
+                    } else {
+                        toast.error(`Failed to switch network: ${switchError.message}`);
+                    }
+                }
+            } else {
+                toast.success('Wallet is already connected and on Base Sepolia Network!');
+            }
+        } else {
+            try {
+                await connect({
+                    connector: injected(),
+                });
+                toast.success('Wallet Connected!');
+            } catch (connectError) {
+                toast.error(`Failed to connect wallet: ${connectError.message}`);
+            }
+        }
+    };
 
-    if (!mounted) return null;
+    if (!mounted) {
+        return null; // Render nothing on the server
+    }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-900 font-inter text-white">
-            <Navbar isConnected={isConnected} address={address} chain={chain} handleConnectWallet={handleConnectWallet} />
-            <main className="flex-grow container mx-auto px-4 py-8">
-                {React.Children.map(children, child => {
-                    if (React.isValidElement(child)) {
-                        return React.cloneElement(child, {
-                            isConnected,
-                            address,
-                            chain,
-                            handleConnectWallet,
-                        });
-                    }
-                    return child;
-                })}
+        <div className="min-h-screen flex flex-col bg-dark-background text-neon-pink font-cyberpunk relative">
+            {/* Background Effect */}
+            <div className="absolute inset-0 z-0 opacity-10">
+                <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-purple-900 to-black animate-gradient-shift"></div>
+                <div className="absolute top-1/4 left-1/4 w-1/2 h-1/2 rounded-full bg-neon-blue filter blur-3xl opacity-30 animate-pulse-light"></div>
+                <div className="absolute bottom-0 right-0 w-full h-full bg-gradient-to-tl from-pink-900 to-black animate-gradient-shift delay-500"></div>
+                <div className="absolute top-1/2 right-1/4 w-1/3 h-1/3 rounded-full bg-neon-purple filter blur-3xl opacity-30 animate-pulse-light delay-200"></div>
+            </div>
+
+            <Navbar
+                isConnected={isConnected}
+                address={address}
+                handleConnectWallet={handleConnectWallet}
+                chain={chain}
+            />
+            <main className="flex-grow container mx-auto p-4 z-10">
+                {children}
             </main>
             <Footer />
         </div>
     );
-};
-
-export default Layout; 
+} 
