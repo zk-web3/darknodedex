@@ -1,12 +1,14 @@
 import '../src/styles/globals.css';
-import { WagmiProvider, useAccount, useConnect, useSwitchChain } from 'wagmi';
+import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { config } from '../src/utils/wallet'; // We will create this file next
-import { Toaster, toast } from 'react-hot-toast';
-import Layout from '../src/components/Layout'; // Import Layout
-import { injected } from 'wagmi/connectors';
+import { Toaster } from 'react-hot-toast';
+import dynamic from 'next/dynamic'; // Import dynamic
 
 const queryClient = new QueryClient();
+
+// Dynamically import Layout with ssr: false
+const DynamicLayout = dynamic(() => import('../src/components/Layout'), { ssr: false });
 
 const BASE_SEPOLIA_CHAIN_ID = 84532; // Base Sepolia Chain ID
 
@@ -34,10 +36,9 @@ function MyApp({ Component, pageProps }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {/* Pass no wallet-related props here; Layout will handle them */}
-        <Layout>
+        <DynamicLayout>
           <Component {...pageProps} />
-        </Layout>
+        </DynamicLayout>
         <Toaster />
       </QueryClientProvider>
     </WagmiProvider>
