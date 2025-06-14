@@ -5,16 +5,13 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { toast } from 'react-hot-toast';
+import { classNames } from '../utils/classNames';
 
 const navigation = [
   { name: 'Trade', href: '/swap', current: true },
   { name: 'Positions', href: '/liquidity', current: false },
   { name: 'Stake', href: '/tokens', current: false },
 ];
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default function Navbar() {
     const { address, isConnected, chain } = useAccount();
