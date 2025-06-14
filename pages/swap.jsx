@@ -3,7 +3,7 @@ import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import Layout from '../src/components/Layout';
 import SwapCard from '../src/components/SwapCard';
 import { tokens } from '../src/utils/tokens';
-import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI } from '../src/utils/uniswap';
+import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { ERC20_ABI } from '../src/utils/tokens';
 
 

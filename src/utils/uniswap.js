@@ -6,6 +6,8 @@ export const UNISWAP_ROUTER_ADDRESS = "0x94cC0AaC535CCDB3C01d6787D6413C739ae12bc
 // Uniswap V3 Quoter V2 Address for Base Sepolia
 export const UNISWAP_QUOTER_ADDRESS = "0xC5290058841028F1614F3A6F0F5816cAd0df5E27";
 
+export const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.basescan.org";
+
 // Minimal ABI for Uniswap V3 Router 02 (exactInputSingle, exactOutputSingle, approve)
 export const UNISWAP_ROUTER_ABI = [
   {

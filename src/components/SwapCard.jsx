@@ -6,6 +6,7 @@ import { useBalance, usePublicClient, useSimulateContract, useWriteContract, use
 import TxStatusModal from './TxStatusModal';
 import { Menu } from '@headlessui/react';
 import { Transition } from '@headlessui/react';
+import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
