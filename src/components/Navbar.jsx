@@ -28,7 +28,7 @@ export default function Navbar() {
             <div className="flex flex-shrink-0 items-center mr-6">
               <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex space-x-6">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
