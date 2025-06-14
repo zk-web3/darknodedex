@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
-import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, ArrowDownIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
-import { Menu, Transition, Dialog } from '@headlessui/react';
+import { Dialog, Transition } from '@headlessui/react';
 import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap';
 import { toast } from 'react-hot-toast';
 
@@ -21,6 +21,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false);
     const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false);
     const [needsApproval, setNeedsApproval] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(''); // State for token search input
 
     // Modal for transaction status
     const [isTxStatusModalOpen, setIsTxStatusModalOpen] = useState(false);
@@ -370,35 +371,59 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             setToToken(token);
             setIsToTokenModalOpen(false);
         }
+        setSearchQuery(''); // Clear search query when a token is selected
         setFromValue(''); // Clear values on token change to re-quote
         setToValue('');
     };
 
-    const renderTokenList = (isFrom) => (
-        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {tokens.map((token) => (
-                <button
-                    key={token.symbol}
-                    className="flex items-center p-2 rounded-lg bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                    onClick={() => handleTokenSelect(token, isFrom)}
-                >
-                    <img src={token.logo} alt={token.symbol} className="w-8 h-8 mr-2" />
-                    <div className="flex flex-col items-start">
-                        <span className="text-white text-lg font-semibold">{token.symbol}</span>
-                        {walletConnected && allTokensBalances[token.address] !== undefined && (
-                            <span className="text-gray-400 text-sm">
-                                Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
-                            </span>
-                        )}
-                    </div>
-                </button>
-            ))}
-        </div>
-    );
+    const renderTokenList = (isFrom) => {
+        const filteredTokens = tokens.filter(token =>
+            token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        return (
+            <>
+                <input
+                    type="text"
+                    placeholder="Search name or paste address"
+                    className="w-full p-3 mb-4 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-600"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <div className="max-h-80 overflow-y-auto custom-scrollbar pr-2">
+                    {filteredTokens.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-2">
+                            {filteredTokens.map((token) => (
+                                <button
+                                    key={token.symbol}
+                                    className="flex items-center p-3 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+                                    onClick={() => handleTokenSelect(token, isFrom)}
+                                >
+                                    <img src={token.logo} alt={token.symbol} className="w-9 h-9 mr-3 rounded-full" />
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-white text-lg font-semibold">{token.symbol}</span>
+                                        <span className="text-gray-400 text-sm">{token.name}</span>
+                                        {walletConnected && allTokensBalances[token.address] !== undefined && (
+                                            <span className="text-gray-400 text-xs">
+                                                Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-400 text-center py-4">No tokens found.</p>
+                    )}
+                </div>
+            </>
+        );
+    };
 
     return (
-        <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl shadow-2xl border border-gray-700 max-w-md mx-auto my-10 backdrop-filter backdrop-blur-lg">
-            <h2 className="text-2xl font-bold text-white mb-6 text-center">Swap</h2>
+        <div className="bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl shadow-2xl border border-gray-700 max-w-md mx-auto my-10 backdrop-filter backdrop-blur-lg font-['Exo']">
+            <h2 className="text-2xl font-bold text-white mb-6 text-center font-['Orbitron']">Swap</h2>
 
             {/* Input for From Token */}
             <div className="mb-4 bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -413,23 +438,23 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         type="text"
                         id="fromAmount"
                         placeholder="0.0"
-                        className="flex-grow bg-transparent text-white text-2xl font-bold focus:outline-none placeholder-gray-500"
+                        className="flex-grow bg-transparent text-white text-3xl font-bold focus:outline-none placeholder-gray-500"
                         value={fromValue}
                         onChange={handleFromValueChange}
                     />
                     {walletConnected && fromTokenBalance && fromTokenBalance.value > 0n && (
                         <button
                             onClick={handleMaxClick}
-                            className="ml-2 px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full hover:bg-blue-700 transition-colors"
+                            className="ml-2 px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full hover:bg-blue-700 transition-colors duration-200 transform hover:scale-105"
                         >
                             Max
                         </button>
                     )}
                     <button
-                        className="ml-3 flex items-center bg-gray-700 hover:bg-gray-600 rounded-full px-4 py-2 text-white text-lg font-semibold transition-colors"
+                        className="ml-3 flex items-center bg-gray-700 hover:bg-gray-600 rounded-full px-4 py-2 text-white text-lg font-semibold transition-colors duration-200 transform hover:scale-105"
                         onClick={() => setIsFromTokenModalOpen(true)}
                     >
-                        <img src={fromToken.logo} alt={fromToken.symbol} className="w-6 h-6 mr-2" />
+                        <img src={fromToken.logo} alt={fromToken.symbol} className="w-7 h-7 mr-2" />
                         {fromToken.symbol}
                         <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
                     </button>
@@ -437,12 +462,12 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             </div>
 
             {/* Swap Arrow Button */}
-            <div className="flex justify-center -my-2">
+            <div className="flex justify-center -my-2 z-10 relative">
                 <button
-                    className="p-2 bg-gray-700 rounded-full border-4 border-gray-900 text-white shadow-lg hover:bg-gray-600 transition-colors"
+                    className="p-2 bg-gray-700 rounded-full border-4 border-gray-900 text-white shadow-lg hover:bg-gray-600 transition-colors duration-200 transform hover:rotate-180"
                     onClick={handleSwapTokens}
                 >
-                    <ArrowDownIcon className="w-5 h-5" />
+                    <ArrowDownIcon className="w-6 h-6" />
                 </button>
             </div>
 
@@ -459,15 +484,15 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         type="text"
                         id="toAmount"
                         placeholder="0.0"
-                        className="flex-grow bg-transparent text-white text-2xl font-bold focus:outline-none placeholder-gray-500"
+                        className="flex-grow bg-transparent text-white text-3xl font-bold focus:outline-none placeholder-gray-500"
                         value={toValue}
                         readOnly
                     />
                     <button
-                        className="ml-3 flex items-center bg-gray-700 hover:bg-gray-600 rounded-full px-4 py-2 text-white text-lg font-semibold transition-colors"
+                        className="ml-3 flex items-center bg-gray-700 hover:bg-gray-600 rounded-full px-4 py-2 text-white text-lg font-semibold transition-colors duration-200 transform hover:scale-105"
                         onClick={() => setIsToTokenModalOpen(true)}
                     >
-                        <img src={toToken.logo} alt={toToken.symbol} className="w-6 h-6 mr-2" />
+                        <img src={toToken.logo} alt={toToken.symbol} className="w-7 h-7 mr-2" />
                         {toToken.symbol}
                         <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" />
                     </button>
@@ -479,10 +504,11 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 <div className="flex justify-between">
                     <span>Price Impact</span>
                     <span className={classNames(
-                        parseFloat(priceImpact) > 5 ? 'text-red-500' : 'text-green-400'
+                        parseFloat(priceImpact) > 5 ? 'text-red-500' : 'text-green-400',
+                        'font-semibold'
                     )}>{priceImpact}%</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                     <span>Slippage Tolerance</span>
                     <input
                         type="number"
@@ -491,17 +517,17 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                         step="0.1"
                         value={slippage}
                         onChange={(e) => setSlippage(e.target.value)}
-                        className="bg-gray-800 text-white rounded-md px-2 py-1 w-20 text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="bg-gray-800 text-white rounded-md px-2 py-1 w-20 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-600"
                     />%
                 </div>
                 {/* Placeholder for Route & Fee (Uniswap-like) */}
                 <div className="flex justify-between">
                     <span>Route</span>
-                    <span>WETH {'>'} USDC</span> {/* Replace with actual route */}
+                    <span className="text-white font-semibold">WETH {'>'} USDC</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Liquidity Provider Fee</span>
-                    <span>0.3%</span> {/* Replace with actual fee */}
+                    <span className="text-white font-semibold">0.3%</span>
                 </div>
             </div>
 
@@ -509,7 +535,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             {!walletConnected ? (
                 <button
                     onClick={handleConnectWallet}
-                    className="w-full py-3 rounded-xl bg-blue-600 text-white text-xl font-bold hover:bg-blue-700 transition-colors"
+                    className="w-full py-3 rounded-xl bg-blue-600 text-white text-xl font-bold hover:bg-blue-700 transition-colors duration-200 transform hover:scale-105 shadow-blue-500/50 hover:shadow-blue-500/70"
                 >
                     Connect Wallet
                 </button>
@@ -517,7 +543,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 <button
                     onClick={handleApprove}
                     disabled={isApproveLoading || !approveSimulateData?.request}
-                    className="w-full py-3 rounded-xl bg-purple-600 text-white text-xl font-bold hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3 rounded-xl bg-purple-600 text-white text-xl font-bold hover:bg-purple-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-purple-500/50 hover:shadow-purple-500/70"
                 >
                     {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
                 </button>
@@ -525,7 +551,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 <button
                     onClick={handleSwap}
                     disabled={isSwapLoading || !swapSimulateData?.request}
-                    className="w-full py-3 rounded-xl bg-green-600 text-white text-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3 rounded-xl bg-green-600 text-white text-xl font-bold hover:bg-green-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-green-500/50 hover:shadow-green-500/70"
                 >
                     {isSwapLoading ? 'Swapping...' : 'Swap'}
                 </button>
@@ -533,7 +559,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
             {/* From Token Selection Modal */}
             <Transition appear show={isFromTokenModalOpen} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setIsFromTokenModalOpen(false)}>
+                <Dialog as="div" className="relative z-50 font-['Exo']" onClose={() => setIsFromTokenModalOpen(false)}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -557,21 +583,21 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                                 leaveFrom="opacity-100 scale-100"
                                 leaveTo="opacity-0 scale-95"
                             >
-                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-900 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
-                                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-white mb-4">
-                                        Select a token
-                                    </Dialog.Title>
-                                    <div className="mt-2">
-                                        {renderTokenList(true)}
-                                    </div>
-                                    <div className="mt-4">
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-900 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all backdrop-filter backdrop-blur-lg">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <Dialog.Title as="h3" className="text-xl font-medium leading-6 text-white font-['Orbitron']">
+                                            Select a token
+                                        </Dialog.Title>
                                         <button
                                             type="button"
-                                            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                            className="text-gray-400 hover:text-white transition-colors"
                                             onClick={() => setIsFromTokenModalOpen(false)}
                                         >
-                                            Close
+                                            <XMarkIcon className="h-6 w-6" />
                                         </button>
+                                    </div>
+                                    <div className="mt-2">
+                                        {renderTokenList(true)}
                                     </div>
                                 </Dialog.Panel>
                             </Transition.Child>
@@ -582,7 +608,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
             {/* To Token Selection Modal */}
             <Transition appear show={isToTokenModalOpen} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setIsToTokenModalOpen(false)}>
+                <Dialog as="div" className="relative z-50 font-['Exo']" onClose={() => setIsToTokenModalOpen(false)}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -606,21 +632,21 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                                 leaveFrom="opacity-100 scale-100"
                                 leaveTo="opacity-0 scale-95"
                             >
-                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-900 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
-                                    <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-white mb-4">
-                                        Select a token
-                                    </Dialog.Title>
-                                    <div className="mt-2">
-                                        {renderTokenList(false)}
-                                    </div>
-                                    <div className="mt-4">
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-900 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all backdrop-filter backdrop-blur-lg">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <Dialog.Title as="h3" className="text-xl font-medium leading-6 text-white font-['Orbitron']">
+                                            Select a token
+                                        </Dialog.Title>
                                         <button
                                             type="button"
-                                            className="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                            className="text-gray-400 hover:text-white transition-colors"
                                             onClick={() => setIsToTokenModalOpen(false)}
                                         >
-                                            Close
+                                            <XMarkIcon className="h-6 w-6" />
                                         </button>
+                                    </div>
+                                    <div className="mt-2">
+                                        {renderTokenList(false)}
                                     </div>
                                 </Dialog.Panel>
                             </Transition.Child>
