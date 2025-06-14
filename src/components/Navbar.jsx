@@ -3,7 +3,7 @@ import { Fragment } from 'react';
 import { Disclosure, Menu, Transition } from '@headlessui/react';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
-import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
+import { injected } from 'wagmi/connectors';
 
 const navigation = [
   { name: 'Home', href: '/', current: false },
@@ -83,7 +83,7 @@ export default function Navbar() {
                         </div>
                     ) : (
                         <button
-                            onClick={() => connect({ connector: new MetaMaskConnector() })}
+                            onClick={() => connect({ connector: injected() })}
                             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-md text-sm transition duration-200"
                         >
                             Connect MetaMask
