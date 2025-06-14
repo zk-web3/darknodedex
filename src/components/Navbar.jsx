@@ -5,7 +5,10 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { toast } from 'react-hot-toast';
-import { classNames } from '../utils/classNames';
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 const navigation = [
   { name: 'Trade', href: '/swap', current: true },

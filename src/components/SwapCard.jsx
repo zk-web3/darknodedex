@@ -6,7 +6,10 @@ import { useBalance, usePublicClient, useSimulateContract, useWriteContract, use
 import TxStatusModal from './TxStatusModal';
 import { Menu } from '@headlessui/react';
 import { Transition } from '@headlessui/react';
-import { classNames } from '../utils/classNames.js';
+
+function classNames(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi }) => {
     const [fromToken, setFromToken] = useState(tokens[0]);
