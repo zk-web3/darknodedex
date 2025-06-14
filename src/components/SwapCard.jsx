@@ -3,9 +3,9 @@ import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
-import { Menu, Transition, Dialog } from '@headlessui/react';
+import { Menu, Transition, Dialog } from '@headlessui/react'; // Add Dialog for modal
 import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast'; // Ensure toast is imported
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -18,8 +18,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const [toValue, setToValue] = useState('');
     const [priceImpact, setPriceImpact] = useState('0.00');
     const [slippage, setSlippage] = useState('0.5'); // Default slippage
-    const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false);
-    const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false);
+    const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false); // State for token selection modal
+    const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false); // State for token selection modal
 
     // Modal for transaction status
     const [isTxStatusModalOpen, setIsTxStatusModalOpen] = useState(false);
@@ -225,6 +225,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
         }
     }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
+
+    const [needsApproval, setNeedsApproval] = useState(false); // Declare needsApproval here
 
     const checkApproval = useCallback(async () => {
         if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
@@ -474,7 +476,8 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 </div> */}
             </div>
 
-            {needsApproval && fromToken.address !== '0x0000000000000000000000000000000000000000' && ( // Only show approve for ERC20
+            {/* Approval Button (only for ERC20 fromToken) */}
+            {needsApproval && fromToken.address !== '0x0000000000000000000000000000000000000000' && (
                 <button
                     onClick={handleApprove}
                     disabled={isApproveLoading || !approveSimulateData?.request}
@@ -499,7 +502,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 title={modalTitle}
                 message={modalMessage}
                 txHash={modalTxHash}
-                explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
+                explorerUrl={BASE_SEPOLIA_EXPLER_URL}
             />
 
             {/* Token Selection Modals */}
