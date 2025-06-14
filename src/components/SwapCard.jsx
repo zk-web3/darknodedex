@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { ethers } from 'ethers';
 import { formatUnits, parseUnits } from 'viem';
-import { useBalance, usePublicClient, useWalletClient, usePrepareWriteContract, useWriteContract, useWaitForTransaction } from 'wagmi';
+import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
 
 const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuoter, uniswapRouterAbi, erc20Abi }) => {
@@ -40,29 +40,24 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     };
 
     // Wagmi v2+ clients
-    const { data: publicClient } = usePublicClient();
-    const { data: walletClient } = useWalletClient();
+    const publicClient = usePublicClient();
 
     // Fetch balances for selected tokens
     const { data: fromTokenBalance } = useBalance({
         address: address,
         token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
-        watch: true, // Keep updated
+        query: { watch: true }, // Use query property for watch
     });
     const { data: toTokenBalance } = useBalance({
         address: address,
         token: toToken.address === '0x0000000000000000000000000000000000000000' ? undefined : toToken.address,
-        watch: true,
+        query: { watch: true }, // Use query property for watch
     });
 
-    const getQuote = async (amountInBigInt, fromToken, toToken) => {
+    const getQuote = useCallback(async (amountInBigInt, fromToken, toToken) => {
         if (!publicClient || !uniswapQuoter || !fromToken || !toToken || amountInBigInt === 0n) return 0n;
 
         try {
-            // Use ethers.Contract with publicClient for read-only calls
-            const quoterContract = new ethers.Contract(uniswapQuoter.address, uniswapQuoter.abi, publicClient);
-
-            // Wagmi's publicClient.readContract is often cleaner for calls
             const quote = await publicClient.readContract({
                 address: uniswapQuoter.address,
                 abi: uniswapQuoter.abi,
@@ -80,7 +75,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             console.error("Error getting quote:", error);
             return 0n;
         }
-    };
+    }, [publicClient, uniswapQuoter]);
 
 
     useEffect(() => {
@@ -96,87 +91,93 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             }
         };
         fetchQuote();
-    }, [fromValue, fromToken, toToken, publicClient]);
+    }, [fromValue, fromToken, toToken, publicClient, getQuote]);
 
     // --- Price Impact Calculation ---
-    useEffect(() => {
-        const calculatePriceImpact = async () => {
-            if (fromValue && toValue && fromToken && toToken && publicClient && parseUnits(fromValue, fromToken.decimals) > 0n) {
-                // Get a micro-quote for a small amount to approximate market price
-                const smallAmountIn = parseUnits('1', fromToken.decimals); // 1 unit of fromToken
-                const smallQuoteOut = await getQuote(smallAmountIn, fromToken, toToken);
+    const calculatePriceImpact = useCallback(async () => {
+        if (fromValue && toValue && fromToken && toToken && publicClient && parseUnits(fromValue, fromToken.decimals) > 0n) {
+            // Get a micro-quote for a small amount to approximate market price
+            const smallAmountIn = parseUnits('1', fromToken.decimals); // 1 unit of fromToken
+            const smallQuoteOut = await getQuote(smallAmountIn, fromToken, toToken);
 
-                if (smallQuoteOut > 0n) {
-                    // Convert BigInts to numbers for floating-point division for ratio
-                    const smallAmountInNum = parseFloat(formatUnits(smallAmountIn, fromToken.decimals));
-                    const smallQuoteOutNum = parseFloat(formatUnits(smallQuoteOut, toToken.decimals));
+            if (smallQuoteOut > 0n) {
+                // Convert BigInts to numbers for floating-point division for ratio
+                const smallAmountInNum = parseFloat(formatUnits(smallAmountIn, fromToken.decimals));
+                const smallQuoteOutNum = parseFloat(formatUnits(smallQuoteOut, toToken.decimals));
 
-                    const marketPriceRatio = smallQuoteOutNum / smallAmountInNum;
-                    const expectedOutput = parseFloat(fromValue) * marketPriceRatio;
+                const marketPriceRatio = smallQuoteOutNum / smallAmountInNum;
+                const expectedOutput = parseFloat(fromValue) * marketPriceRatio;
 
-                    const actualOutput = parseFloat(toValue);
+                const actualOutput = parseFloat(toValue);
 
-                    if (expectedOutput > 0) {
-                        const impact = ((expectedOutput - actualOutput) / expectedOutput) * 100;
-                        setPriceImpact(impact.toFixed(2));
-                    } else {
-                        setPriceImpact('0.00');
-                    }
+                if (expectedOutput > 0) {
+                    const impact = ((expectedOutput - actualOutput) / expectedOutput) * 100;
+                    setPriceImpact(impact.toFixed(2));
                 } else {
                     setPriceImpact('0.00');
                 }
             } else {
                 setPriceImpact('0.00');
             }
-        };
+        }
+        else {
+            setPriceImpact('0.00');
+        }
+    }, [fromValue, toValue, fromToken, toToken, publicClient, getQuote]);
+
+    useEffect(() => {
         calculatePriceImpact();
-    }, [fromValue, toValue, fromToken, toToken, publicClient]);
+    }, [calculatePriceImpact]);
 
     // --- Wagmi hooks for Approval ---
     const amountToApproveBigInt = fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000'
         ? parseUnits(fromValue, fromToken.decimals)
         : 0n;
 
-    const { config: approveConfig, error: approvePrepareError } = usePrepareWriteContract({
+    const { data: approveSimulateData, error: approveSimulateError } = useSimulateContract({
         address: fromToken.address,
         abi: erc20Abi,
         functionName: 'approve',
-        args: [uniswapRouter.address, ethers.MaxUint256], // Use ethers.MaxUint256 for ethers v6
-        enabled: walletConnected && amountToApproveBigInt > 0n,
+        args: [uniswapRouter.address, ethers.MaxUint256],
+        query: { enabled: walletConnected && amountToApproveBigInt > 0n },
     });
-    const { data: approveData, writeContract: writeApprove } = useWriteContract(approveConfig);
-    const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransaction({ hash: approveData?.hash });
+    const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
+    const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransactionReceipt({ hash: approveWriteData });
 
     useEffect(() => {
         if (isApproveLoading) {
             openModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
         } else if (isApproveSuccess) {
             openModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
-            // After successful approval, re-check approval status if needed, or simply allow swap
         } else if (isApproveErrorTx) {
-            openModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approvePrepareError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
+            openModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
         }
-    }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approvePrepareError, approveTxData]);
+    }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
 
+
+    const checkApproval = useCallback(async () => {
+        if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
+            try {
+                const allowance = await publicClient.readContract({
+                    address: fromToken.address,
+                    abi: erc20Abi,
+                    functionName: 'allowance',
+                    args: [address, uniswapRouter.address],
+                });
+                const amountIn = parseUnits(fromValue, fromToken.decimals);
+                setNeedsApproval(allowance < amountIn); // Use < for BigInt comparison
+            } catch (error) {
+                console.error("Error checking approval:", error);
+                setNeedsApproval(true); // Assume approval needed on error
+            }
+        } else {
+            setNeedsApproval(false); // No approval needed for native token or if not connected
+        }
+    }, [walletConnected, address, publicClient, fromToken, fromValue, uniswapRouter.address, erc20Abi]);
 
     useEffect(() => {
-        const checkApproval = async () => {
-            if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
-                try {
-                    const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, publicClient); // Use publicClient for read calls
-                    const allowance = await tokenContract.allowance(address, uniswapRouter.address);
-                    const amountIn = parseUnits(fromValue, fromToken.decimals);
-                    setNeedsApproval(allowance < amountIn); // Use < for BigInt comparison
-                } catch (error) {
-                    console.error("Error checking approval:", error);
-                    setNeedsApproval(true); // Assume approval needed on error
-                }
-            } else {
-                setNeedsApproval(false); // No approval needed for native token or if not connected
-            }
-        };
         checkApproval();
-    }, [fromValue, fromToken, walletConnected, address, publicClient, uniswapRouter.address, erc20Abi]);
+    }, [checkApproval]);
 
 
     const handleFromValueChange = (e) => {
@@ -191,11 +192,11 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     };
 
     const handleApprove = async () => {
-        if (writeApprove) {
-            writeApprove();
+        if (approveSimulateData?.request && writeApprove) {
+            writeApprove(approveSimulateData.request);
         } else {
             openModal('error', 'Approval Error', 'Could not prepare approval transaction. Check console for details.');
-            console.error("Approve function not ready or configuration error:", approvePrepareError);
+            console.error("Approve function not ready or configuration error:", approveSimulateError);
         }
     };
 
@@ -217,17 +218,17 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     const isEthToToken = fromToken.address === '0x0000000000000000000000000000000000000000';
 
-    const { config: swapConfig, error: swapPrepareError, isError: isSwapPrepareError } = usePrepareWriteContract({
+    const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
         address: uniswapRouter.address,
         abi: uniswapRouter.abi,
         functionName: 'exactInputSingle',
         args: swapArgs,
         value: isEthToToken ? amountInBigInt : undefined,
-        enabled: walletConnected && amountInBigInt > 0n && toValue && !needsApproval, // Removed || !swapping, as wagmi handles loading
+        query: { enabled: walletConnected && amountInBigInt > 0n && toValue && !needsApproval },
     });
 
-    const { data: swapData, writeContract: writeSwap } = useWriteContract(swapConfig);
-    const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransaction({ hash: swapData?.hash });
+    const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
+    const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransactionReceipt({ hash: swapWriteData });
 
 
     useEffect(() => {
@@ -235,7 +236,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             openModal('loading', 'Swapping...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
         } else if (isSwapSuccess) {
             openModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
-            // Save to local storage after successful swap
             const transaction = {
                 hash: swapTxData?.transactionHash,
                 fromToken: fromToken.symbol,
@@ -250,28 +250,28 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             setFromValue('');
             setToValue('');
         } else if (isSwapErrorTx) {
-            openModal('error', 'Swap Failed', `Error swapping: ${swapPrepareError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
+            openModal('error', 'Swap Failed', `Error swapping: ${swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
         }
-    }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapPrepareError, swapTxData]);
+    }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromToken.symbol, toToken.symbol, fromValue, toValue]);
 
 
     const handleSwap = async () => {
-        if (writeSwap) {
-            writeSwap();
-        } else {
+        if (swapSimulateData?.request && writeSwap) {
+            writeSwap(swapSimulateData.request);
+        }
+        else {
             openModal('error', 'Swap Error', 'Could not prepare swap transaction. Check console for details.');
-            console.error("Swap function not ready or configuration error:", swapPrepareError);
+            console.error("Swap function not ready or configuration error:", swapSimulateError);
         }
     };
 
-    const estimatedGas = approveConfig.request?.gasLimit || swapConfig.request?.gasLimit ? formatUnits(approveConfig.request?.gasLimit || swapConfig.request?.gasLimit || 0n, 0) : 'N/A'; // Use 0n for BigInt literal
+    const estimatedGas = approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit ? formatUnits(approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit || 0n, 0) : 'N/A';
 
 
     return (
         <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full border border-purple-500 glassmorphism-bg">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-white neon-text">Swap Tokens</h2>
-                {/* <div className="text-gray-400">Settings Icon</div> */}
             </div>
 
             {/* From Token Input */}
@@ -385,7 +385,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     <button
                         className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
                         onClick={handleApprove}
-                        disabled={isApproveLoading || !writeApprove || amountToApproveBigInt === 0n}
+                        disabled={isApproveLoading || !approveSimulateData?.request || amountToApproveBigInt === 0n}
                     >
                         {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
                     </button>
@@ -393,7 +393,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     <button
                         className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200"
                         onClick={handleSwap}
-                        disabled={isSwapLoading || !writeSwap || amountInBigInt === 0n || !toValue}
+                        disabled={isSwapLoading || !swapSimulateData?.request || amountInBigInt === 0n || !toValue}
                     >
                         {isSwapLoading ? 'Swapping...' : 'Swap'}
                     </button>

@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Navbar from '../src/components/Navbar';
 import Footer from '../src/components/Footer';
 import { tokens, ERC20_ABI } from '../src/utils/tokens';
-import { useAccount, usePublicClient, useNetwork } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { formatUnits } from 'viem';
 import { baseSepolia } from 'wagmi/chains';
 import { toast } from 'react-hot-toast';
 
 export default function TokensPage() {
-  const { address, isConnected } = useAccount();
-  const { chain } = useNetwork();
+  const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
   const [tokenBalances, setTokenBalances] = useState({});
   const [loadingBalances, setLoadingBalances] = useState(true);
