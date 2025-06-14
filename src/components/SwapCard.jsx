@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast'; // Assuming toast is configured
 import { FiSettings } from 'react-icons/fi'; // For the settings icon
 import { ArrowsUpDownIcon } from '@heroicons/react/24/outline'; // For the swap arrow
 import { IoSwapVertical } from 'react-icons/io5';
-import { MaxUint256 } from '@ethersproject/constants';
+import { MaxUint256 } from 'ethers'; // Corrected import for ethers v6
 import {
   USDC_TOKEN, 
   WETH_TOKEN, 
@@ -243,7 +243,7 @@ const SwapCard = ({
     address: fromToken.address,
     abi: erc20Abi,
     functionName: 'approve',
-    args: [uniswapRouter.address, BigInt(2n**256n - 1n)], // Approving max amount
+    args: [uniswapRouter.address, MaxUint256], // Approving max amount
     query: { enabled: walletConnected && amountToApproveBigInt > 0n && fromToken.address !== '0x0000000000000000000000000000000000000000' },
   });
   const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
