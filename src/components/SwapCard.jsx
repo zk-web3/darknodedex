@@ -46,12 +46,12 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const { data: fromTokenBalance } = useBalance({
         address: address,
         token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
-        query: { watch: true }, // Use query property for watch
+        query: { watch: true },
     });
     const { data: toTokenBalance } = useBalance({
         address: address,
         token: toToken.address === '0x0000000000000000000000000000000000000000' ? undefined : toToken.address,
-        query: { watch: true }, // Use query property for watch
+        query: { watch: true },
     });
 
     const getQuote = useCallback(async (amountInBigInt, fromToken, toToken) => {
@@ -66,17 +66,16 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     tokenIn: fromToken.address,
                     tokenOut: toToken.address,
                     amountIn: amountInBigInt,
-                    fee: 3000, // Assuming 0.3% fee for now, can be dynamic
-                    sqrtPriceLimitX96: 0n, // BigInt literal for sqrtPriceLimitX96
+                    fee: 3000,
+                    sqrtPriceLimitX96: 0n,
                 }],
             });
-            return BigInt(quote); // Ensure it's BigInt for consistency
+            return BigInt(quote);
         } catch (error) {
             console.error("Error getting quote:", error);
             return 0n;
         }
     }, [publicClient, uniswapQuoter]);
-
 
     useEffect(() => {
         const fetchQuote = async () => {
@@ -93,21 +92,16 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         fetchQuote();
     }, [fromValue, fromToken, toToken, publicClient, getQuote]);
 
-    // --- Price Impact Calculation ---
     const calculatePriceImpact = useCallback(async () => {
         if (fromValue && toValue && fromToken && toToken && publicClient && parseUnits(fromValue, fromToken.decimals) > 0n) {
-            // Get a micro-quote for a small amount to approximate market price
-            const smallAmountIn = parseUnits('1', fromToken.decimals); // 1 unit of fromToken
+            const smallAmountIn = parseUnits('1', fromToken.decimals);
             const smallQuoteOut = await getQuote(smallAmountIn, fromToken, toToken);
 
             if (smallQuoteOut > 0n) {
-                // Convert BigInts to numbers for floating-point division for ratio
                 const smallAmountInNum = parseFloat(formatUnits(smallAmountIn, fromToken.decimals));
                 const smallQuoteOutNum = parseFloat(formatUnits(smallQuoteOut, toToken.decimals));
-
                 const marketPriceRatio = smallQuoteOutNum / smallAmountInNum;
                 const expectedOutput = parseFloat(fromValue) * marketPriceRatio;
-
                 const actualOutput = parseFloat(toValue);
 
                 if (expectedOutput > 0) {
@@ -129,7 +123,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         calculatePriceImpact();
     }, [calculatePriceImpact]);
 
-    // --- Wagmi hooks for Approval ---
     const amountToApproveBigInt = fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000'
         ? parseUnits(fromValue, fromToken.decimals)
         : 0n;
@@ -154,7 +147,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         }
     }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
 
-
     const checkApproval = useCallback(async () => {
         if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
             try {
@@ -165,20 +157,19 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     args: [address, uniswapRouter.address],
                 });
                 const amountIn = parseUnits(fromValue, fromToken.decimals);
-                setNeedsApproval(allowance < amountIn); // Use < for BigInt comparison
+                setNeedsApproval(allowance < amountIn);
             } catch (error) {
                 console.error("Error checking approval:", error);
-                setNeedsApproval(true); // Assume approval needed on error
+                setNeedsApproval(true);
             }
         } else {
-            setNeedsApproval(false); // No approval needed for native token or if not connected
+            setNeedsApproval(false);
         }
     }, [walletConnected, address, publicClient, fromToken, fromValue, uniswapRouter.address, erc20Abi]);
 
     useEffect(() => {
         checkApproval();
     }, [checkApproval]);
-
 
     const handleFromValueChange = (e) => {
         setFromValue(e.target.value);
@@ -200,10 +191,9 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         }
     };
 
-    // --- Wagmi hooks for Swap ---
     const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
-    const amountOutMinBigInt = parseUnits(toValue, toToken.decimals) * (BigInt(10000) - BigInt(parseFloat(slippage) * 100)) / 10000n; // Use BigInt for calculations
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20); // 20 minutes from now
+    const amountOutMinBigInt = parseUnits(toValue, toToken.decimals) * (BigInt(10000) - BigInt(parseFloat(slippage) * 100)) / 10000n;
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
 
     const swapArgs = [{
         tokenIn: fromToken.address,
@@ -213,7 +203,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         deadline: deadline,
         amountIn: amountInBigInt,
         amountOutMinimum: amountOutMinBigInt,
-        sqrtPriceLimitX96: 0n // BigInt literal
+        sqrtPriceLimitX96: 0n
     }];
 
     const isEthToToken = fromToken.address === '0x0000000000000000000000000000000000000000';
@@ -229,7 +219,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
     const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransactionReceipt({ hash: swapWriteData });
-
 
     useEffect(() => {
         if (isSwapLoading) {
@@ -254,7 +243,6 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         }
     }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromToken.symbol, toToken.symbol, fromValue, toValue]);
 
-
     const handleSwap = async () => {
         if (swapSimulateData?.request && writeSwap) {
             writeSwap(swapSimulateData.request);
@@ -267,45 +255,46 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     const estimatedGas = approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit ? formatUnits(approveSimulateData?.request?.gasLimit || swapSimulateData?.request?.gasLimit || 0n, 0) : 'N/A';
 
-
     return (
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full border border-purple-500 glassmorphism-bg">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-white neon-text">Swap Tokens</h2>
+        <div className="bg-gray-900 rounded-lg p-6 shadow-xl max-w-md w-full border border-gray-700 glassmorphism-bg">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white neon-text">Swap</h2>
+                {/* Settings icon can go here */}
             </div>
 
-            {/* From Token Input */}
-            <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+            {/* Sell Token Input */}
+            <div className="mb-3 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500 transition-colors duration-200 relative">
                 <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400">From</span>
+                    <span className="text-gray-400 text-lg">Sell</span>
                     <span className="text-gray-400 text-sm">Balance: {fromTokenBalance ? formatUnits(fromTokenBalance.value, fromTokenBalance.decimals) : '0.0'} {fromToken.symbol}</span>
                 </div>
                 <div className="flex items-center">
                     <input
                         type="number"
-                        placeholder="0.0"
-                        className="w-full bg-transparent text-white text-3xl font-bold outline-none"
+                        placeholder="0.00"
+                        className="w-full bg-transparent text-white text-3xl font-semibold outline-none focus:outline-none"
                         value={fromValue}
                         onChange={handleFromValueChange}
                     />
                     <button
-                        className="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full"
+                        className="flex items-center bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-xl transition duration-200"
                         onClick={() => setShowFromTokenSelect(!showFromTokenSelect)}
                     >
-                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 mr-2" />
-                        {fromToken.symbol} <ChevronDownIcon className="h-5 w-5 ml-1" />
+                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-7 h-7 mr-2 rounded-full" />
+                        <span className="text-xl font-semibold">{fromToken.symbol}</span>
+                        <ChevronDownIcon className="h-5 w-5 ml-2 text-gray-400" />
                     </button>
                 </div>
                 {showFromTokenSelect && (
-                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 left-0 right-0 max-h-60 overflow-y-auto border border-gray-600">
                         {tokens.map(token => (
                             <div
                                 key={token.address}
-                                className="flex items-center p-2 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setFromToken(token); setShowFromTokenSelect(false); }} // Set fromToken and close
+                                className="flex items-center p-3 hover:bg-gray-600 cursor-pointer text-white"
+                                onClick={() => { setFromToken(token); setShowFromTokenSelect(false); }}
                             >
-                                <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 mr-2" />
-                                {token.symbol}
+                                <img src={token.logoURI} alt={token.symbol} className="w-7 h-7 mr-3 rounded-full" />
+                                <span className="text-lg">{token.symbol}</span>
                             </div>
                         ))}
                     </div>
@@ -313,71 +302,88 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             </div>
 
             {/* Swap Arrow */}
-            <div className="flex justify-center -my-2">
+            <div className="flex justify-center -my-3">
                 <button
-                    className="bg-gray-700 p-2 rounded-full border-4 border-gray-800 hover:border-purple-500 transition-colors duration-200"
+                    className="bg-gray-700 p-2 rounded-full border-4 border-gray-900 hover:border-purple-500 transition-colors duration-200 shadow-lg z-10"
                     onClick={handleSwapTokens}
                 >
                     <ArrowDownIcon className="h-6 w-6 text-purple-400" />
                 </button>
             </div>
 
-            {/* To Token Input */}
-            <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
+            {/* Buy Token Input */}
+            <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-purple-500 transition-colors duration-200 relative">
                 <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400">To</span>
+                    <span className="text-gray-400 text-lg">Buy</span>
                     <span className="text-gray-400 text-sm">Balance: {toTokenBalance ? formatUnits(toTokenBalance.value, toTokenBalance.decimals) : '0.0'} {toToken.symbol}</span>
                 </div>
                 <div className="flex items-center">
                     <input
                         type="number"
-                        placeholder="0.0"
-                        className="w-full bg-transparent text-white text-3xl font-bold outline-none"
+                        placeholder="0.00"
+                        className="w-full bg-transparent text-white text-3xl font-semibold outline-none focus:outline-none"
                         value={toValue}
                         readOnly
                     />
                     <button
-                        className="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full"
+                        className="flex items-center bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-3 rounded-xl transition duration-200"
                         onClick={() => setShowToTokenSelect(!showToTokenSelect)}
                     >
-                        <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 mr-2" />
-                        {toToken.symbol} <ChevronDownIcon className="h-5 w-5 ml-1" />
+                        <img src={toToken.logoURI} alt={toToken.symbol} className="w-7 h-7 mr-2 rounded-full" />
+                        <span className="text-xl font-semibold">{toToken.symbol}</span>
+                        <ChevronDownIcon className="h-5 w-5 ml-2 text-gray-400" />
                     </button>
                 </div>
                 {showToTokenSelect && (
-                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 max-h-60 overflow-y-auto">
+                    <div className="absolute z-10 bg-gray-700 rounded-md shadow-lg mt-2 left-0 right-0 max-h-60 overflow-y-auto border border-gray-600">
                         {tokens.map(token => (
                             <div
                                 key={token.address}
-                                className="flex items-center p-2 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setToToken(token); setShowToTokenSelect(false); }} // Set toToken and close
+                                className="flex items-center p-3 hover:bg-gray-600 cursor-pointer text-white"
+                                onClick={() => { setToToken(token); setShowToTokenSelect(false); }}
                             >
-                                <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 mr-2" />
-                                {token.symbol}
+                                <img src={token.logoURI} alt={token.symbol} className="w-7 h-7 mr-3 rounded-full" />
+                                <span className="text-lg">{token.symbol}</span>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Price Impact & Slippage */}
-            <div className="text-gray-400 text-sm mb-4">
-                <p>Price Impact: {priceImpact}%</p>
-                <div className="flex items-center">
-                    <label htmlFor="slippage" className="mr-2">Slippage Tolerance:</label>
-                    <input
-                        id="slippage"
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        max="50" // Set a reasonable max
-                        value={slippage}
-                        onChange={(e) => setSlippage(e.target.value)}
-                        className="w-20 bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-white text-sm"
-                    />
-                    <span className="ml-1">%</span>
+            {/* Price Impact & Slippage & Fees */}
+            <div className="text-gray-400 text-sm space-y-2 mb-6">
+                <div className="flex justify-between">
+                    <span>Price Impact:</span>
+                    <span className="font-medium text-white">{priceImpact}%</span>
                 </div>
-                <p className="mt-2">Estimated Gas: {estimatedGas} </p>
+                <div className="flex justify-between items-center">
+                    <span>Slippage Tolerance:</span>
+                    <div className="flex items-center">
+                        <input
+                            id="slippage"
+                            type="number"
+                            step="0.1"
+                            min="0.1"
+                            max="50"
+                            value={slippage}
+                            onChange={(e) => setSlippage(e.target.value)}
+                            className="w-20 bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-white text-sm outline-none focus:border-purple-500"
+                        />
+                        <span className="ml-1">%</span>
+                    </div>
+                </div>
+                <div className="flex justify-between">
+                    <span>Fee (0.25%):</span>
+                    <span className="font-medium text-white">~ 0.00 ETH</span> {/* Placeholder */}
+                </div>
+                <div className="flex justify-between">
+                    <span>Network fee:</span>
+                    <span className="font-medium text-white">~ {estimatedGas} ETH</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Routing source:</span>
+                    <span className="font-medium text-white">Uniswap V3</span> {/* Placeholder */}
+                </div>
             </div>
 
             {walletConnected ? (
@@ -414,7 +420,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 title={modalTitle}
                 message={modalMessage}
                 txHash={modalTxHash}
-                explorerUrl="https://sepolia.basescan.org" // Base Sepolia Etherscan URL
+                explorerUrl="https://sepolia.basescan.org"
             />
         </div>
     );

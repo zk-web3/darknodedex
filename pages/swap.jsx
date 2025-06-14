@@ -2,7 +2,6 @@ import React from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import Layout from '../src/components/Layout';
 import SwapCard from '../src/components/SwapCard';
-import TransactionHistory from '../src/components/TransactionHistory';
 import { tokens } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI } from '../src/utils/uniswap';
 import { ERC20_ABI } from '../src/utils/tokens';
@@ -20,7 +19,7 @@ const SwapPage = () => {
     return (
         <Layout>
             <div className="flex flex-col items-center justify-center min-h-[calc(100vh-80px)] py-8 px-4">
-                <h1 className="text-5xl font-bold text-white mb-8 neon-text">Swap Tokens</h1>
+                <h1 className="text-5xl font-bold text-white mb-8 neon-text">Trade</h1>
                 <SwapCard
                     walletConnected={isConnected}
                     address={address}
@@ -30,7 +29,6 @@ const SwapPage = () => {
                     uniswapRouterAbi={UNISWAP_ROUTER_ABI}
                     erc20Abi={ERC20_ABI}
                 />
-                <TransactionHistory />
             </div>
         </Layout>
     );

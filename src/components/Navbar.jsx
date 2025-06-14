@@ -1,16 +1,13 @@
 import Link from 'next/link';
 import { Fragment } from 'react';
-import { Disclosure, Menu, Transition } from '@headlessui/react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useAccount, useConnect, useDisconnect, useEnsName } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 const navigation = [
-  { name: 'Home', href: '/', current: false },
-  { name: 'Swap', href: '/swap', current: false },
-  { name: 'Liquidity', href: '/liquidity', current: false },
-  { name: 'Tokens', href: '/tokens', current: false },
-  { name: 'About', href: '/about', current: false },
+  { name: 'Trade', href: '/swap', current: true },
+  { name: 'Explore', href: '/', current: false },
+  { name: 'Positions', href: '/liquidity', current: false },
+  { name: 'Stake', href: '/tokens', current: false },
 ];
 
 function classNames(...classes) {
@@ -24,155 +21,57 @@ export default function Navbar() {
     const { data: ensName } = useEnsName({ address });
 
   return (
-    <Disclosure as="nav" className="bg-darknode-bg-light shadow-lg font-rajdhani">
-      {({ open }) => (
-        <>
-          <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
-            <div className="relative flex h-12 items-center justify-between">
-              <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
-                {/* Mobile menu button*/}
-                <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-1 text-gray-400 hover:bg-darknode-bg-medium hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white">
-                  <span className="absolute -inset-0.5" />
-                  <span className="sr-only">Open main menu</span>
-                  {open ? (
-                    <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                  ) : (
-                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                  )}
-                </Disclosure.Button>
-              </div>
-              <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
-                <div className="flex flex-shrink-0 items-center">
-                  {/* DarkNode Logo Placeholder */}
-                  <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
-                </div>
-                <div className="hidden sm:ml-6 sm:block">
-                  <div className="flex space-x-4">
-                    {navigation.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className={classNames(
-                          item.current
-                            ? 'bg-darknode-bg-medium text-white'
-                            : 'text-gray-300 hover:bg-darknode-bg-medium hover:text-white',
-                          'rounded-md px-3 py-1 text-sm font-medium'
-                        )}
-                        aria-current={item.current ? 'page' : undefined}
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                {/* Connect Wallet Button */}
-                {
-                    isConnected ? (
-                        <div className="flex items-center space-x-2">
-                            <span className="text-gray-300 text-sm">
-                                {ensName || `${address.slice(0, 6)}...${address.slice(-4)}`}
-                            </span>
-                            <button
-                                onClick={() => disconnect()}
-                                className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md text-sm transition duration-200"
-                            >
-                                Disconnect
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => connect({ connector: injected() })}
-                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-2 rounded-md text-sm transition duration-200"
-                        >
-                            Connect MetaMask
-                        </button>
-                    )
-                }
-
-                {/* Profile dropdown (if needed) */}
-                {/* <Menu as="div" className="relative ml-3">
-                  <div>
-                    <Menu.Button className="relative flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800">
-                      <span className="absolute -inset-1.5" />
-                      <span className="sr-only">Open user menu</span>
-                      <img
-                        className="h-8 w-8 rounded-full"
-                        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                        alt=""
-                      />
-                    </Menu.Button>
-                  </div>
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-out duration-100"
-                    enterFrom="transform opacity-0 scale-95"
-                    enterTo="transform opacity-100 scale-100"
-                    leave="transition ease-in duration-75"
-                    leaveFrom="transform opacity-100 scale-100"
-                    leaveTo="transform opacity-0 scale-95"
-                  >
-                    <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="#"
-                            className={classNames(active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700')}
-                          >
-                            Your Profile
-                          </a>
-                        )}
-                      </Menu.Item>
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="#"
-                            className={classNames(active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700')}
-                          >
-                            Settings
-                          </a>
-                        )}
-                      </Menu.Item>
-                      <Menu.Item>
-                        {({ active }) => (
-                          <a
-                            href="#"
-                            className={classNames(active ? 'bg-gray-100' : '', 'block px-4 py-2 text-sm text-gray-700')}
-                          >
-                            Sign out
-                          </a>
-                        )}
-                      </Menu.Item>
-                    </Menu.Items>
-                  </Transition>
-                </Menu> */}
-              </div>
+    <nav className="bg-darknode-bg-light shadow-lg font-rajdhani">
+      <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+        <div className="relative flex h-10 items-center justify-between">
+          <div className="flex flex-1 items-center justify-start">
+            <div className="flex flex-shrink-0 items-center mr-6">
+              <span className="text-darknode-neon-purple text-xl font-orbitron font-bold">DN</span>
             </div>
-          </div>
-
-          <Disclosure.Panel className="sm:hidden">
-            <div className="space-y-1 px-2 pb-3 pt-2">
+            <div className="flex space-x-4">
               {navigation.map((item) => (
-                <Disclosure.Button
+                <Link
                   key={item.name}
-                  as={Link}
                   href={item.href}
                   className={classNames(
                     item.current
-                      ? 'bg-darknode-bg-medium text-white'
-                      : 'text-gray-300 hover:bg-darknode-bg-medium hover:text-white',
-                    'block rounded-md px-3 py-1 text-base font-medium'
+                      ? 'text-darknode-neon-cyan border-b-2 border-darknode-neon-cyan'
+                      : 'text-gray-300 hover:text-white hover:border-b-2 hover:border-darknode-neon-purple',
+                    'px-2 py-1 text-sm font-medium transition-colors duration-200'
                   )}
                   aria-current={item.current ? 'page' : undefined}
                 >
                   {item.name}
-                </Disclosure.Button>
+                </Link>
               ))}
             </div>
-          </Disclosure.Panel>
-        </>
-      )}
-    </Disclosure>
+          </div>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
+            {
+                isConnected ? (
+                    <div className="flex items-center space-x-2">
+                        <span className="text-gray-300 text-xs">
+                            {ensName || `${address.slice(0, 4)}...${address.slice(-3)}`}
+                        </span>
+                        <button
+                            onClick={() => disconnect()}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md text-xs transition duration-200"
+                        >
+                            Disconnect
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => connect({ connector: injected() })}
+                        className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white font-bold py-1 px-2 rounded-md text-xs transition duration-200"
+                    >
+                        Connect MetaMask
+                    </button>
+                )
+            }
+          </div>
+        </div>
+      </div>
+    </nav>
   );
 } 
