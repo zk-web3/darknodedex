@@ -3,8 +3,7 @@ import { ChevronDownIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { formatUnits, parseUnits } from 'viem';
 import { useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import TxStatusModal from './TxStatusModal';
-import { Menu } from '@headlessui/react';
-import { Transition } from '@headlessui/react';
+import { Menu, Transition, Dialog } from '@headlessui/react';
 import { BASE_SEPOLIA_EXPLORER_URL } from '../utils/uniswap';
 import { toast } from 'react-hot-toast';
 
@@ -19,27 +18,26 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const [toValue, setToValue] = useState('');
     const [priceImpact, setPriceImpact] = useState('0.00');
     const [slippage, setSlippage] = useState('0.5'); // Default slippage
-    const [showFromTokenSelect, setShowFromTokenSelect] = useState(false);
-    const [showToTokenSelect, setShowToTokenSelect] = useState(false);
-    const [needsApproval, setNeedsApproval] = useState(false);
+    const [isFromTokenModalOpen, setIsFromTokenModalOpen] = useState(false);
+    const [isToTokenModalOpen, setIsToTokenModalOpen] = useState(false);
 
-    // Modal state
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    // Modal for transaction status
+    const [isTxStatusModalOpen, setIsTxStatusModalOpen] = useState(false);
     const [modalStatus, setModalStatus] = useState('');
     const [modalTitle, setModalTitle] = useState('');
     const [modalMessage, setModalMessage] = useState('');
     const [modalTxHash, setModalTxHash] = useState('');
 
-    const openModal = (status, title, message, txHash = '') => {
+    const openTxStatusModal = (status, title, message, txHash = '') => {
         setModalStatus(status);
         setModalTitle(title);
         setModalMessage(message);
         setModalTxHash(txHash);
-        setIsModalOpen(true);
+        setIsTxStatusModalOpen(true);
     };
 
-    const closeModal = () => {
-        setIsModalOpen(false);
+    const closeTxStatusModal = () => {
+        setIsTxStatusModalOpen(false);
         setModalStatus('');
         setModalTitle('');
         setModalMessage('');
@@ -49,17 +47,30 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     // Wagmi v2+ clients
     const publicClient = usePublicClient();
 
-    // Fetch balances for selected tokens
-    const { data: fromTokenBalance } = useBalance({
+    // Fetch balances for selected tokens (for display next to input fields)
+    const { data: fromTokenBalanceData } = useBalance({
         address: address,
         token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
-        query: { watch: true },
+        query: { enabled: walletConnected && fromToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
     });
-    const { data: toTokenBalance } = useBalance({
+    const { data: ethBalanceData } = useBalance({
+        address: address,
+        query: { enabled: walletConnected && fromToken.address === '0x0000000000000000000000000000000000000000', watch: true },
+    });
+    const fromTokenBalance = fromToken.address === '0x0000000000000000000000000000000000000000' ? ethBalanceData : fromTokenBalanceData;
+
+
+    const { data: toTokenBalanceData } = useBalance({
         address: address,
         token: toToken.address === '0x0000000000000000000000000000000000000000' ? undefined : toToken.address,
-        query: { watch: true },
+        query: { enabled: walletConnected && toToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
     });
+    const { data: toEthBalanceData } = useBalance({
+        address: address,
+        query: { enabled: walletConnected && toToken.address === '0x0000000000000000000000000000000000000000', watch: true },
+    });
+    const toTokenBalance = toToken.address === '0x0000000000000000000000000000000000000000' ? toEthBalanceData : toTokenBalanceData;
+
 
     // Fetch balances for ALL tokens in the list for the dropdowns
     const [allTokensBalances, setAllTokensBalances] = useState({});
@@ -111,14 +122,18 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     const getQuote = useCallback(async (amountInBigInt, fromToken, toToken) => {
         if (!publicClient || !uniswapQuoter || !fromToken || !toToken || amountInBigInt === 0n) return 0n;
 
+        // If ETH is involved, use WETH for quoting
+        const tokenInForQuote = fromToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : fromToken.address;
+        const tokenOutForQuote = toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : toToken.address;
+
         try {
             const quote = await publicClient.readContract({
                 address: uniswapQuoter.address,
                 abi: uniswapQuoter.abi,
                 functionName: 'quoteExactInputSingle',
                 args: [{
-                    tokenIn: fromToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : fromToken.address,
-                    tokenOut: toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH').address : toToken.address,
+                    tokenIn: tokenInForQuote,
+                    tokenOut: tokenOutForQuote,
                     amountIn: amountInBigInt,
                     fee: 3000,
                     sqrtPriceLimitX96: 0n,
@@ -134,16 +149,26 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     useEffect(() => {
         const fetchQuote = async () => {
             if (fromValue && fromToken && toToken && publicClient) {
-                const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
-                if (amountInBigInt > 0n) {
-                    const quotedAmountOut = await getQuote(amountInBigInt, fromToken, toToken);
-                    setToValue(formatUnits(quotedAmountOut, toToken.decimals));
-                } else {
-                    setToValue('');
+                try {
+                    const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
+                    if (amountInBigInt > 0n) {
+                        const quotedAmountOut = await getQuote(amountInBigInt, fromToken, toToken);
+                        setToValue(formatUnits(quotedAmountOut, toToken.decimals));
+                    } else {
+                        setToValue('');
+                    }
+                } catch (error) {
+                    console.error("Error parsing fromValue or getting quote:", error);
+                    setToValue(''); // Clear toValue on error
                 }
+            } else {
+                setToValue(''); // Clear toValue if inputs are not ready
             }
         };
-        fetchQuote();
+        const debounceFetch = setTimeout(() => {
+            fetchQuote();
+        }, 300); // Debounce quote fetching
+        return () => clearTimeout(debounceFetch);
     }, [fromValue, fromToken, toToken, publicClient, getQuote]);
 
     const calculatePriceImpact = useCallback(async () => {
@@ -193,11 +218,11 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     useEffect(() => {
         if (isApproveLoading) {
-            openModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
+            openTxStatusModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
         } else if (isApproveSuccess) {
-            openModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
+            openTxStatusModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
         } else if (isApproveErrorTx) {
-            openModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
+            openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
         }
     }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
 
@@ -230,23 +255,28 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     };
 
     const handleSwapTokens = () => {
-        setFromToken(toToken);
-        setToToken(fromToken);
-        setFromValue(toValue);
-        setToValue(fromValue);
+        const tempFromToken = fromToken;
+        const tempToToken = toToken;
+        const tempFromValue = fromValue;
+        const tempToValue = toValue;
+
+        setFromToken(tempToToken);
+        setToToken(tempFromToken);
+        setFromValue(tempToValue);
+        setToValue(tempFromValue);
     };
 
     const handleApprove = async () => {
         if (approveSimulateData?.request && writeApprove) {
             writeApprove(approveSimulateData.request);
         } else {
-            openModal('error', 'Approval Error', 'Could not prepare approval transaction. Check console for details.');
+            openTxStatusModal('error', 'Approval Error', 'Could not prepare approval transaction. Check console for details.');
             console.error("Approve function not ready or configuration error:", approveSimulateError);
         }
     };
 
-    const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
-    const amountOutMinBigInt = parseUnits(toValue, toToken.decimals) * (BigInt(10000) - BigInt(parseFloat(slippage) * 100)) / 10000n;
+    const amountInBigInt = fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n;
+    const amountOutMinBigInt = toValue ? (parseUnits(toValue, toToken.decimals) * (BigInt(10000) - BigInt(parseFloat(slippage) * 100n))) / 10000n : 0n;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
 
     const swapArgs = [{
@@ -268,7 +298,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         functionName: 'exactInputSingle',
         args: swapArgs,
         value: isEthToToken ? amountInBigInt : undefined,
-        query: { enabled: walletConnected && amountInBigInt > 0n && toValue && !needsApproval },
+        query: { enabled: walletConnected && amountInBigInt > 0n && toValue && (!needsApproval || isEthToToken) }, // No approval needed for ETH
     });
 
     const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
@@ -276,9 +306,9 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
 
     useEffect(() => {
         if (isSwapLoading) {
-            openModal('loading', 'Swapping...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
+            openTxStatusModal('loading', 'Swapping...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
         } else if (isSwapSuccess) {
-            openModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
+            openTxStatusModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
             const transaction = {
                 hash: swapTxData?.transactionHash,
                 fromToken: fromToken.symbol,
@@ -293,7 +323,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             setFromValue('');
             setToValue('');
         } else if (isSwapErrorTx) {
-            openModal('error', 'Swap Failed', `Error swapping: ${swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
+            openTxStatusModal('error', 'Swap Failed', `Error swapping: ${swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
         }
     }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromToken.symbol, toToken.symbol, fromValue, toValue]);
 
@@ -311,22 +341,35 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         if (swapSimulateData?.request && writeSwap) {
             writeSwap(swapSimulateData.request);
         } else {
-            openModal('error', 'Swap Error', 'Could not prepare swap transaction. Check console for details.');
+            openTxStatusModal('error', 'Swap Error', 'Could not prepare swap transaction. Check console for details.');
             console.error("Swap function not ready or configuration error:", swapSimulateError);
         }
+    };
+
+    const handleTokenSelect = (token, isFrom) => {
+        if (isFrom) {
+            setFromToken(token);
+            setIsFromTokenModalOpen(false);
+        } else {
+            setToToken(token);
+            setIsToTokenModalOpen(false);
+        }
+        setFromValue(''); // Clear values on token change
+        setToValue('');
     };
 
     return (
         <div className="bg-gray-900 rounded-2xl shadow-2xl border border-gray-700 p-6 sm:p-8 w-full max-w-md mx-auto transform transition-all duration-300 hover:scale-[1.01] glassmorphism-bg">
             <h2 className="text-white text-2xl font-bold text-center mb-6">Trade</h2>
 
-            <div className="mb-4 relative">
+            {/* Sell Section */}
+            <div className="mb-4 relative bg-[#1A1A1A] rounded-xl p-4">
                 <div className="flex justify-between items-center mb-2">
-                    <label htmlFor="from-token-input" className="text-sm font-medium text-gray-400">You sell</label>
+                    <label htmlFor="from-token-input" className="text-sm font-medium text-gray-400">Sell</label>
                     {walletConnected && fromTokenBalance && (
                         <span className="text-sm text-gray-400">
                             Balance: {parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(4)}
-                            <button 
+                            <button
                                 onClick={() => setFromValue(formatUnits(fromTokenBalance.value, fromToken.decimals))}
                                 className="ml-2 px-2 py-1 bg-purple-600/20 text-darknode-neon-purple text-xs rounded-md hover:bg-purple-600/40 transition-colors"
                             >
@@ -339,55 +382,21 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     <input
                         id="from-token-input"
                         type="number"
-                        placeholder="0.0"
-                        className="w-full p-2 bg-transparent text-white text-xl font-bold focus:outline-none"
+                        placeholder="0"
+                        className="w-full bg-transparent text-white text-3xl font-bold focus:outline-none placeholder-gray-600"
                         value={fromValue}
                         onChange={handleFromValueChange}
                     />
-                    {/* From Token Select */}
-                    <Menu as="div" className="relative inline-block text-left z-10">
-                        <div>
-                            <Menu.Button className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-darknode-neon-purple">
-                                <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 rounded-full mr-2" />
-                                {fromToken.symbol}
-                                <ChevronDownIcon className="-mr-1 ml-2 h-5 w-5" aria-hidden="true" />
-                            </Menu.Button>
-                        </div>
-                        <Transition
-                            as={Fragment}
-                            enter="transition ease-out duration-100"
-                            enterFrom="transform opacity-0 scale-95"
-                            enterTo="transform opacity-100 scale-100"
-                            leave="transition ease-in duration-75"
-                            leaveFrom="transform opacity-100 scale-100"
-                            leaveTo="transform opacity-0 scale-95"
-                        >
-                            <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto custom-scrollbar">
-                                <div className="py-1">
-                                    {tokens.map((token) => (
-                                        <Menu.Item key={token.address}>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => setFromToken(token)}
-                                                    className={classNames(
-                                                        active ? 'bg-gray-600 text-white' : 'text-gray-200',
-                                                        'flex items-center px-4 py-2 text-sm w-full text-left'
-                                                    )}
-                                                >
-                                                    <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 rounded-full mr-2" />
-                                                    {token.symbol}
-                                                    <p className="ml-auto text-gray-400 text-xs">
-                                                        Balance: {allTokensBalances[token.address] ? parseFloat(allTokensBalances[token.address]).toFixed(4) : '0.0000'}
-                                                    </p>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-                            </Menu.Items>
-                        </Transition>
-                    </Menu>
+                    <button
+                        onClick={() => setIsFromTokenModalOpen(true)}
+                        className="inline-flex justify-center items-center rounded-xl bg-gray-700 text-white font-bold py-2 px-3 text-lg transition duration-200 hover:bg-gray-600 focus:outline-none"
+                    >
+                        <img src={fromToken.logoURI} alt={fromToken.symbol} className="w-6 h-6 rounded-full mr-2" />
+                        {fromToken.symbol}
+                        <ChevronDownIcon className="ml-2 h-5 w-5" aria-hidden="true" />
+                    </button>
                 </div>
+                <div className="text-gray-500 text-sm mt-1">$0.00</div> {/* Placeholder for USD value */}
             </div>
 
             <div className="flex justify-center -my-2">
@@ -399,18 +408,14 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                 </button>
             </div>
 
-            <div className="mb-4 relative">
+            {/* Buy Section */}
+            <div className="mb-4 relative bg-[#1A1A1A] rounded-xl p-4">
                 <div className="flex justify-between items-center mb-2">
-                    <label htmlFor="to-token-input" className="text-sm font-medium text-gray-400">You buy</label>
+                    <label htmlFor="to-token-input" className="text-sm font-medium text-gray-400">Buy</label>
                     {walletConnected && toTokenBalance && (
                         <span className="text-sm text-gray-400">
                             Balance: {parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(4)}
-                            <button 
-                                onClick={() => setToValue(formatUnits(toTokenBalance.value, toToken.decimals))}
-                                className="ml-2 px-2 py-1 bg-purple-600/20 text-darknode-neon-purple text-xs rounded-md hover:bg-purple-600/40 transition-colors"
-                            >
-                                Max
-                            </button>
+                            {/* No Max button for 'to' token as it's an output */}
                         </span>
                     )}
                 </div>
@@ -418,55 +423,25 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                     <input
                         id="to-token-input"
                         type="number"
-                        placeholder="0.0"
-                        className="w-full p-2 bg-transparent text-white text-xl font-bold focus:outline-none"
+                        placeholder="0"
+                        className="w-full bg-transparent text-white text-3xl font-bold focus:outline-none placeholder-gray-600"
                         value={toValue}
                         readOnly // Output field
                     />
-                    {/* To Token Select */}
-                    <Menu as="div" className="relative inline-block text-left z-10">
-                        <div>
-                            <Menu.Button className="inline-flex justify-center w-full rounded-md border border-gray-600 shadow-sm px-4 py-2 bg-gray-700 text-sm font-medium text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-darknode-neon-purple">
+                    <button
+                        onClick={() => setIsToTokenModalOpen(true)}
+                        className="inline-flex justify-center items-center rounded-xl bg-purple-600/20 text-darknode-neon-purple font-bold py-2 px-3 text-lg transition duration-200 hover:bg-purple-600/40 focus:outline-none"
+                    >
+                        {toToken.symbol === 'Select token' ? 'Select token' : (
+                            <>
                                 <img src={toToken.logoURI} alt={toToken.symbol} className="w-6 h-6 rounded-full mr-2" />
                                 {toToken.symbol}
-                                <ChevronDownIcon className="-mr-1 ml-2 h-5 w-5" aria-hidden="true" />
-                            </Menu.Button>
-                        </div>
-                        <Transition
-                            as={Fragment}
-                            enter="transition ease-out duration-100"
-                            enterFrom="transform opacity-0 scale-95"
-                            enterTo="transform opacity-100 scale-100"
-                            leave="transition ease-in duration-75"
-                            leaveFrom="transform opacity-100 scale-100"
-                            leaveTo="transform opacity-0 scale-95"
-                        >
-                            <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto custom-scrollbar">
-                                <div className="py-1">
-                                    {tokens.map((token) => (
-                                        <Menu.Item key={token.address}>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => setToToken(token)}
-                                                    className={classNames(
-                                                        active ? 'bg-gray-600 text-white' : 'text-gray-200',
-                                                        'flex items-center px-4 py-2 text-sm w-full text-left'
-                                                    )}
-                                                >
-                                                    <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 rounded-full mr-2" />
-                                                    {token.symbol}
-                                                    <p className="ml-auto text-gray-400 text-xs">
-                                                        Balance: {allTokensBalances[token.address] ? parseFloat(allTokensBalances[token.address]).toFixed(4) : '0.0000'}
-                                                    </p>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-                            </Menu.Items>
-                        </Transition>
-                    </Menu>
+                            </>
+                        )}
+                        <ChevronDownIcon className="ml-2 h-5 w-5" aria-hidden="true" />
+                    </button>
                 </div>
+                <div className="text-gray-500 text-sm mt-1">$0.00</div> {/* Placeholder for USD value */}
             </div>
 
             {/* Price Info, Slippage, Fees */}
@@ -518,14 +493,183 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
             </button>
 
             <TxStatusModal
-                isOpen={isModalOpen}
-                onClose={closeModal}
+                isOpen={isTxStatusModalOpen}
+                onClose={closeTxStatusModal}
                 status={modalStatus}
                 title={modalTitle}
                 message={modalMessage}
                 txHash={modalTxHash}
                 explorerUrl={BASE_SEPOLIA_EXPLORER_URL}
             />
+
+            {/* Token Selection Modals */}
+            {/* From Token Modal */}
+            <Transition appear show={isFromTokenModalOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setIsFromTokenModalOpen(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black bg-opacity-75" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4 text-center">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all border border-gray-700">
+                                    <Dialog.Title
+                                        as="h3"
+                                        className="text-lg font-medium leading-6 text-white flex justify-between items-center"
+                                    >
+                                        Select a token
+                                        <button onClick={() => setIsFromTokenModalOpen(false)} className="text-gray-400 hover:text-white">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </Dialog.Title>
+                                    <div className="mt-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search tokens"
+                                            className="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-darknode-neon-purple"
+                                        />
+                                        {/* Placeholder for popular tokens grid */}
+                                        <div className="grid grid-cols-4 gap-2 mt-4">
+                                            {tokens.slice(0, 4).map(token => ( // Show first 4 tokens as popular
+                                                <button key={token.address} onClick={() => handleTokenSelect(token, true)} className="flex flex-col items-center p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-white text-xs">
+                                                    <img src={token.logoURI} alt={token.symbol} className="w-8 h-8 rounded-full mb-1" />
+                                                    {token.symbol}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-6 border-t border-gray-700 pt-4 max-h-60 overflow-y-auto custom-scrollbar">
+                                            {tokens.map((token) => (
+                                                <button
+                                                    key={token.address}
+                                                    onClick={() => handleTokenSelect(token, true)}
+                                                    className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-gray-700 transition-colors text-white"
+                                                >
+                                                    <div className="flex items-center">
+                                                        <img src={token.logoURI} alt={token.symbol} className="w-8 h-8 rounded-full mr-3" />
+                                                        <div>
+                                                            <p className="text-sm font-medium">{token.name}</p>
+                                                            <p className="text-xs text-gray-400">{token.symbol}</p>
+                                                        </div>
+                                                    </div>
+                                                    {walletConnected && allTokensBalances[token.address] && (
+                                                        <p className="text-sm text-gray-300">
+                                                            {parseFloat(allTokensBalances[token.address]).toFixed(4)}
+                                                        </p>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+
+            {/* To Token Modal (duplicate structure, can be refactored later if needed) */}
+            <Transition appear show={isToTokenModalOpen} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setIsToTokenModalOpen(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black bg-opacity-75" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4 text-center">
+                            <Transition.Child
+                                as={Fragment}
+                                enter="ease-out duration-300"
+                                enterFrom="opacity-0 scale-95"
+                                enterTo="opacity-100 scale-100"
+                                leave="ease-in duration-200"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="opacity-0 scale-95"
+                            >
+                                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-gray-800 p-6 text-left align-middle shadow-xl transition-all border border-gray-700">
+                                    <Dialog.Title
+                                        as="h3"
+                                        className="text-lg font-medium leading-6 text-white flex justify-between items-center"
+                                    >
+                                        Select a token
+                                        <button onClick={() => setIsToTokenModalOpen(false)} className="text-gray-400 hover:text-white">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </Dialog.Title>
+                                    <div className="mt-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Search tokens"
+                                            className="w-full p-3 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-darknode-neon-purple"
+                                        />
+                                        {/* Placeholder for popular tokens grid */}
+                                        <div className="grid grid-cols-4 gap-2 mt-4">
+                                            {tokens.slice(0, 4).map(token => ( // Show first 4 tokens as popular
+                                                <button key={token.address} onClick={() => handleTokenSelect(token, false)} className="flex flex-col items-center p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-white text-xs">
+                                                    <img src={token.logoURI} alt={token.symbol} className="w-8 h-8 rounded-full mb-1" />
+                                                    {token.symbol}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-6 border-t border-gray-700 pt-4 max-h-60 overflow-y-auto custom-scrollbar">
+                                            {tokens.map((token) => (
+                                                <button
+                                                    key={token.address}
+                                                    onClick={() => handleTokenSelect(token, false)}
+                                                    className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-gray-700 transition-colors text-white"
+                                                >
+                                                    <div className="flex items-center">
+                                                        <img src={token.logoURI} alt={token.symbol} className="w-8 h-8 rounded-full mr-3" />
+                                                        <div>
+                                                            <p className="text-sm font-medium">{token.name}</p>
+                                                            <p className="text-xs text-gray-400">{token.symbol}</p>
+                                                        </div>
+                                                    </div>
+                                                    {walletConnected && allTokensBalances[token.address] && (
+                                                        <p className="text-sm text-gray-300">
+                                                            {parseFloat(allTokensBalances[token.address]).toFixed(4)}
+                                                        </p>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Dialog.Panel>
+                            </Transition.Child>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
         </div>
     );
 };
