@@ -59,7 +59,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
         if (!publicClient || !uniswapQuoter || !fromToken || !toToken || amountInBigInt === 0n) return 0n;
 
         try {
-            // Use ethers.Contract with walletClient.transport (for ethers v6 compatible signer) or publicClient for read
+            // Use ethers.Contract with publicClient for read-only calls
             const quoterContract = new ethers.Contract(uniswapQuoter.address, uniswapQuoter.abi, publicClient);
 
             // Wagmi's publicClient.readContract is often cleaner for calls
@@ -302,7 +302,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                             <div
                                 key={token.address}
                                 className="flex items-center p-2 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setFromToken(token); setShowFromTokenSelect(false); }}
+                                onClick={() => { setFromToken(token); setShowFromTokenSelect(false); }} // Set fromToken and close
                             >
                                 <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 mr-2" />
                                 {token.symbol}
@@ -350,7 +350,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
                             <div
                                 key={token.address}
                                 className="flex items-center p-2 hover:bg-gray-600 cursor-pointer text-white"
-                                onClick={() => { setToToken(token); setShowToTokenSelect(false); }}
+                                onClick={() => { setToToken(token); setShowToTokenSelect(false); }} // Set toToken and close
                             >
                                 <img src={token.logoURI} alt={token.symbol} className="w-6 h-6 mr-2" />
                                 {token.symbol}

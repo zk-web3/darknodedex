@@ -24,8 +24,6 @@ const SwapPage = () => {
                 <SwapCard
                     walletConnected={isConnected}
                     address={address}
-                    provider={publicClient}
-                    signer={walletClient}
                     tokens={tokens}
                     uniswapRouter={uniswapRouter}
                     uniswapQuoter={uniswapQuoter}
