@@ -161,72 +161,176 @@ const DarkNodeSwapBox = ({ connectWallet, address, network, provider, signer }) 
           Connect Wallet
         </button>
       ) : (
-        <>
-          <h2 className="text-xl font-bold mb-4 text-center">Swap Tokens</h2>
+        <div className="relative">
+          {/* Settings icon */}
+          <div className="absolute top-0 right-0 p-2 cursor-pointer text-gray-400 hover:text-white">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.125 1.125 0 011.924 0c1.756.426 1.756 2.924 0 3.35a1.125 1.125 0 010 1.924c-1.756.426-2.924.426-3.35 0a1.125 1.125 0 01-1.924 0c-1.756-.426-1.756-2.924 0-3.35a1.125 1.125 0 010-1.924z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4.317 10.325c-1.756.426-1.756 2.924 0 3.35a1.125 1.125 0 010 1.924c.426 1.756 2.924 1.756 3.35 0a1.125 1.125 0 011.924 0c.426 1.756 2.924 1.756 3.35 0a1.125 1.125 0 011.924 0c1.756.426 1.756 2.924 0 3.35a1.125 1.125 0 010 1.924c-1.756.426-2.924.426-3.35 0a1.125 1.125 0 01-1.924 0c-1.756-.426-1.756-2.924 0-3.35a1.125 1.125 0 010-1.924z"
+              />
+            </svg>
+          </div>
 
-          {/* From Token */}
-          <div className="mb-4">
-            <div className="flex justify-between mb-1 text-sm">
-              <span>From</span>
-              <span className="text-gray-400">
+          <h2 className="text-xl font-bold mb-4 text-center">Swap</h2>
+
+          {/* From Token Input */}
+          <div className="bg-zinc-800 rounded-xl p-4 mb-2 relative">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-400 text-sm">You pay</span>
+              <span className="text-gray-400 text-sm">
                 Balance:{" "}
                 {loadingBalances
                   ? "Loading..."
                   : balances[tokenIn.address]
-                  ? Number(balances[tokenIn.address]).toFixed(4)
+                  ? Number(balances[tokenIn.address]).toFixed(6)
                   : "0.0000"}
               </span>
             </div>
-            <div className="bg-zinc-800 p-3 rounded-xl flex justify-between items-center cursor-pointer"
-              onClick={() => setModalOpenFor("in")}
-            >
+            <div className="flex items-center">
               <input
                 type="text"
                 placeholder="0.0"
-                className="bg-transparent text-white text-xl outline-none w-full"
+                className="w-full bg-transparent text-white text-3xl font-bold outline-none flex-grow"
                 value={amountIn}
                 onChange={(e) => setAmountIn(e.target.value)}
               />
-              <div className="text-white font-semibold ml-4">{tokenIn.symbol}</div>
+              <button
+                onClick={() => setModalOpenFor("in")}
+                className="flex items-center bg-zinc-700 hover:bg-zinc-600 rounded-full py-2 pl-3 pr-4 ml-2 text-white font-semibold"
+              >
+                {/* Placeholder for token icon */}
+                <div className="w-6 h-6 bg-gray-500 rounded-full mr-2"></div>
+                {tokenIn.symbol}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4 ml-2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
             </div>
           </div>
 
-          {/* To Token */}
-          <div className="mb-4">
-            <div className="flex justify-between mb-1 text-sm">
-              <span>To</span>
-              <span className="text-gray-400">
+          {/* Swap Arrow Button */}
+          <div className="flex justify-center -my-3 z-10 relative">
+            <button
+              onClick={() => {
+                setTokenIn(tokenOut);
+                setTokenOut(tokenIn);
+                setAmountIn("");
+                setAmountOut("");
+              }}
+              className="bg-zinc-900 border-4 border-zinc-800 rounded-full p-2 text-gray-400 hover:text-white hover:border-zinc-700 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                stroke="currentColor"
+                className="w-5 h-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* To Token Input */}
+          <div className="bg-zinc-800 rounded-xl p-4 mt-2">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-gray-400 text-sm">You receive</span>
+              <span className="text-gray-400 text-sm">
                 Balance:{" "}
                 {loadingBalances
                   ? "Loading..."
                   : balances[tokenOut.address]
-                  ? Number(balances[tokenOut.address]).toFixed(4)
+                  ? Number(balances[tokenOut.address]).toFixed(6)
                   : "0.0000"}
               </span>
             </div>
-            <div className="bg-zinc-800 p-3 rounded-xl flex justify-between items-center cursor-pointer"
-              onClick={() => setModalOpenFor("out")}
-            >
+            <div className="flex items-center">
               <input
                 type="text"
                 disabled
                 placeholder="0.0"
-                className="bg-transparent text-white text-xl outline-none w-full cursor-not-allowed"
+                className="w-full bg-transparent text-white text-3xl font-bold outline-none flex-grow cursor-not-allowed"
                 value={amountOut}
                 readOnly
               />
-              <div className="text-white font-semibold ml-4">{tokenOut.symbol}</div>
+              <button
+                onClick={() => setModalOpenFor("out")}
+                className="flex items-center bg-zinc-700 hover:bg-zinc-600 rounded-full py-2 pl-3 pr-4 ml-2 text-white font-semibold"
+              >
+                {/* Placeholder for token icon */}
+                <div className="w-6 h-6 bg-gray-500 rounded-full mr-2"></div>
+                {tokenOut.symbol}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4 ml-2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Price details and Slippage (Placeholders) */}
+          <div className="mt-4 text-sm text-gray-400 space-y-2">
+            <div className="flex justify-between">
+              <span>Price</span>
+              <span>
+                1 {tokenIn.symbol} = ? {tokenOut.symbol}
+              </span>{" "}
+              {/* This will require fetching price from a router/oracle */}
+            </div>
+            <div className="flex justify-between">
+              <span>Slippage Tolerance</span>
+              <span>0.5%</span> {/* This will need a settings modal */}
             </div>
           </div>
 
           <button
             onClick={handleSwap}
-            className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-6 rounded-xl mt-4"
+            className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-3 px-6 rounded-xl mt-6"
           >
             Swap
           </button>
 
-          {/* Token Selector Modal */}
+          {/* Token Selector Modal */}{' '}
           {modalOpenFor && (
             <TokenSelectorModal
               tokens={TOKENS}
@@ -235,7 +339,7 @@ const DarkNodeSwapBox = ({ connectWallet, address, network, provider, signer }) 
               onClose={() => setModalOpenFor(null)}
             />
           )}
-        </>
+        </div>
       )}
     </div>
   );

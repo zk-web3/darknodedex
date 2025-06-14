@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
-import Swap from "./components/Swap";
+import DarkNodeSwapBox from "./components/DarkNodeSwapBox";
 import Liquidity from "./components/Liquidity";
 import Faucet from "./components/Faucet";
 import TokenListDrawer from "./components/TokenListDrawer";
@@ -169,7 +169,7 @@ export default function App() {
       />
       {page === "Home" && <Hero onLaunchApp={handleLaunchApp} />}
       {page === "Swap" && (
-        <Swap
+        <DarkNodeSwapBox
           onOpenSettings={openSettings}
           onOpenTokenList={openDrawer}
           connectWallet={connectWallet}
