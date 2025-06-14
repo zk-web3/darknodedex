@@ -37,12 +37,9 @@ const TokenSelectorModal = ({ tokens, balances, onSelect, onClose }) => {
   );
 };
 
-let provider;
-let signer;
-
-const DarkNodeSwapBox = () => {
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+const DarkNodeSwapBox = ({ connectWallet, address, network, provider, signer }) => {
+  const walletConnected = !!address; // Determine connection status from prop
+  const walletAddress = address; // Use address prop directly
   const [balances, setBalances] = useState({});
   const [tokenIn, setTokenIn] = useState(TOKENS[0]);
   const [tokenOut, setTokenOut] = useState(TOKENS[1]);
@@ -52,31 +49,18 @@ const DarkNodeSwapBox = () => {
   const [loadingBalances, setLoadingBalances] = useState(false);
   const [modalOpenFor, setModalOpenFor] = useState(null); // null or "in" or "out"
 
-  // Connect Wallet & fetch balances
-  const connectWallet = async () => {
-    try {
-      if (!window.ethereum) return alert("Install MetaMask.");
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      const address = await signer.getAddress();
-      setWalletAddress(address);
-      const network = await provider.getNetwork();
-      if (network.chainId !== 84532)
-        return alert("Switch to Base Sepolia Network.");
+  useEffect(() => {
+    if (provider && signer) {
       setRouterContract(
         new ethers.Contract(UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, signer)
       );
-      setWalletConnected(true);
-    } catch (err) {
-      console.error("Connection Error", err);
     }
-  };
+  }, [provider, signer]);
 
   // Fetch balances of all tokens for connected wallet
   const fetchBalances = async () => {
     try {
-      if (!walletConnected) return;
+      if (!walletConnected || !provider || !walletAddress) return;
       setLoadingBalances(true);
       const balData = {};
       for (const token of TOKENS) {
@@ -84,9 +68,16 @@ const DarkNodeSwapBox = () => {
           const bal = await provider.getBalance(walletAddress);
           balData[token.address] = ethers.utils.formatEther(bal);
         } else {
-          const tokenContract = new ethers.Contract(token.address, ERC20_ABI, provider);
+          const tokenContract = new ethers.Contract(
+            token.address,
+            ERC20_ABI,
+            provider
+          );
           const rawBal = await tokenContract.balanceOf(walletAddress);
-          balData[token.address] = ethers.utils.formatUnits(rawBal, token.decimals);
+          balData[token.address] = ethers.utils.formatUnits(
+            rawBal,
+            token.decimals
+          );
         }
       }
       setBalances(balData);
@@ -98,8 +89,8 @@ const DarkNodeSwapBox = () => {
   };
 
   useEffect(() => {
-    if (walletConnected) fetchBalances();
-  }, [walletConnected, walletAddress]);
+    if (walletConnected && provider && walletAddress) fetchBalances();
+  }, [walletConnected, provider, walletAddress]);
 
   // Token select handler from modal
   const onSelectToken = (token) => {
@@ -125,6 +116,10 @@ const DarkNodeSwapBox = () => {
     try {
       if (!amountIn || Number(amountIn) <= 0) {
         alert("Enter valid amount");
+        return;
+      }
+      if (!routerContract || !signer || !walletAddress) {
+        alert("Wallet not fully connected or router contract not initialized.");
         return;
       }
 

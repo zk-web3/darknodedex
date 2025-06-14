@@ -1,7 +1,7 @@
 import React from "react";
 import DarkNodeSwapBox from "./DarkNodeSwapBox"; // 👈 Import your functional SwapBox component
 
-const DarkNodeSwapPage = () => {
+const DarkNodeSwapPage = ({ connectWallet, address, network, provider, signer }) => {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
@@ -12,7 +12,13 @@ const DarkNodeSwapPage = () => {
       {/* Main Content Area */}
       <main className="flex-grow flex justify-center items-center p-6">
         {/* SwapBox Actual Component */}
-        <DarkNodeSwapBox /> {/* 👈 Replaced Placeholder with working component */}
+        <DarkNodeSwapBox
+          connectWallet={connectWallet}
+          address={address}
+          network={network}
+          provider={provider}
+          signer={signer}
+        /> {/* 👈 Replaced Placeholder with working component */}
       </main>
 
       {/* Footer */}
