@@ -11,14 +11,27 @@ const DarkNodeSwapPage = ({ connectWallet, address, network, provider, signer })
 
       {/* Main Content Area */}
       <main className="flex-grow flex justify-center items-center p-6">
-        {/* SwapBox Actual Component */}
-        <DarkNodeSwapBox
-          connectWallet={connectWallet}
-          address={address}
-          network={network}
-          provider={provider}
-          signer={signer}
-        /> {/* 👈 Replaced Placeholder with working component */}
+        <div className="w-full max-w-md mx-auto">
+          {!provider || !signer ? (
+            <div className="text-center text-lg text-gray-400">
+              Please connect your wallet to use the swap feature.
+              <button
+                onClick={connectWallet}
+                className="mt-4 w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold py-3 px-6 rounded-xl"
+              >
+                Connect Wallet
+              </button>
+            </div>
+          ) : (
+            <DarkNodeSwapBox
+              connectWallet={connectWallet}
+              address={address}
+              network={network}
+              provider={provider}
+              signer={signer}
+            />
+          )}
+        </div>
       </main>
 
       {/* Footer */}
