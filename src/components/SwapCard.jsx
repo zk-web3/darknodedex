@@ -426,25 +426,25 @@ const SwapCard = ({
         <input
           type="text"
           placeholder="Search name or paste address"
-          className="w-full p-3 mb-4 rounded-xl bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 border border-gray-600 font-['Exo']"
+          className="w-full p-4 mb-4 rounded-xl bg-zinc-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-fuchsia-600 border border-zinc-700 font-['Exo'] text-lg shadow-inner"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
         <div className="max-h-80 overflow-y-auto custom-scrollbar pr-2">
           {filteredTokens.length > 0 ? (
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-3">
               {filteredTokens.map((token) => (
                 <button
                   key={token.symbol}
-                  className="flex items-center p-3 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 transition-colors duration-200"
+                  className="flex items-center p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-fuchsia-600 transition-colors duration-200 shadow-md border border-zinc-700"
                   onClick={() => handleTokenSelect(token, isFrom)}
                 >
-                  <img src={token.logo} alt={token.symbol} className="w-9 h-9 mr-3 rounded-full" />
+                  <img src={token.logo} alt={token.symbol} className="w-10 h-10 mr-4 rounded-full border border-zinc-600" />
                   <div className="flex flex-col items-start">
-                    <span className="text-white text-lg font-semibold">{token.symbol}</span>
+                    <span className="text-white text-xl font-semibold">{token.symbol}</span>
                     <span className="text-gray-400 text-sm">{token.name}</span>
                     {walletConnected && allTokensBalances[token.address] !== undefined && (
-                      <span className="text-gray-400 text-xs">
+                      <span className="text-gray-400 text-xs mt-1">
                         Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
                       </span>
                     )}
@@ -453,7 +453,7 @@ const SwapCard = ({
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-center py-4">No tokens found.</p>
+            <p className="text-gray-400 text-center py-6 text-lg">No tokens found. Try a different search.</p>
           )}
         </div>
       </>
@@ -461,107 +461,110 @@ const SwapCard = ({
   };
 
   return (
-    <div className="max-w-md w-full mx-auto p-4 bg-[#1A1A1A] rounded-2xl shadow-lg text-white font-exo">
+    <div className="max-w-md w-full mx-auto p-6 bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-700 text-white font-exo relative overflow-hidden transform transition-all duration-300 hover:scale-[1.005]">
+      {/* Decorative background elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-zinc-800 to-black opacity-30 blur-3xl -z-10"></div>
       
       {/* Tabs and Settings */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-4">
+      <div className="flex justify-between items-center mb-6 relative z-10">
+        <div className="flex bg-zinc-800 rounded-full p-1 shadow-inner">
           {["Swap", "Limit", "Buy", "Sell"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={classNames(
-                "text-sm px-2 py-1 rounded-md",
-                activeTab === tab ? "bg-gradient-to-r from-pink-500 to-purple-600 text-white" : "text-gray-400"
+                "text-sm px-4 py-2 rounded-full font-semibold transition-all duration-200",
+                activeTab === tab ? "bg-gradient-to-r from-pink-600 to-purple-700 text-white shadow-lg" : "text-gray-400 hover:text-white"
               )}
             >
               {tab}
             </button>
           ))}
         </div>
-        <FiSettings className="text-gray-400 hover:text-white cursor-pointer" />
+        <button className="p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 transition-colors duration-200 text-gray-400 hover:text-white">
+          <FiSettings className="w-5 h-5" />
+        </button>
       </div>
 
       {/* You Sell Panel */}
-      <div className="bg-[#2A2A2A] p-4 rounded-xl mb-2 relative">
-        <div className="flex justify-between items-center">
-          <div className="text-xs text-gray-400">You Sell</div>
+      <div className="bg-zinc-800 p-5 rounded-2xl mb-3 border border-zinc-700 shadow-lg relative">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-xs text-gray-300 uppercase tracking-wider">You Sell</div>
           {walletConnected && fromTokenBalance && (
-            <button onClick={handleMaxClick} className="text-xs text-pink-500 font-semibold">MAX ({parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(6)})</button>
+            <button onClick={handleMaxClick} className="text-sm text-fuchsia-400 font-semibold hover:text-fuchsia-300 transition-colors">MAX ({parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(6)})</button>
           )}
         </div>
-        <div className="flex justify-between items-end items-center">
+        <div className="flex justify-between items-end">
           <input
-            className="bg-transparent text-3xl outline-none w-full mt-1 font-orbitron"
-            placeholder="0"
+            className="bg-transparent text-4xl outline-none w-full font-orbitron placeholder-gray-500 text-white"
+            placeholder="0.0"
             value={fromValue}
             onChange={handleFromValueChange}
           />
           <button 
-            className="text-md flex items-center gap-1 bg-[#3B3B3B] px-3 py-1 rounded-lg ml-2"
+            className="text-lg flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-4 py-2 rounded-xl ml-2 text-white font-semibold transition-colors duration-200 shadow-md"
             onClick={() => setIsFromTokenModalOpen(true)}
           >
-            <img src={fromToken.logo} alt={fromToken.symbol} className="w-6 h-6 mr-1 rounded-full" />
+            {fromToken.logo && <img src={fromToken.logo} alt={fromToken.symbol} className="w-7 h-7 rounded-full" />}
             {fromToken.symbol}
-            <ChevronDownIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-5 h-5 text-gray-300" />
           </button>
         </div>
-        {/* <div className="text-sm text-gray-500 mt-1">$0</div> */}
       </div>
 
       {/* Arrow Switcher */}
-      <div className="w-full flex justify-center -my-3 z-10">
-        <div 
-          className="bg-[#3B3B3B] p-2 rounded-full hover:rotate-180 transition-transform duration-300 cursor-pointer shadow-md"
+      <div className="w-full flex justify-center -my-3 z-20 relative">
+        <button 
+          className="bg-zinc-700 p-3 rounded-full border border-zinc-600 hover:bg-zinc-600 transition-all duration-300 cursor-pointer shadow-lg transform hover:scale-110"
           onClick={handleSwapTokens}
         >
-          <IoSwapVertical className="w-4 h-4 text-white" />
-        </div>
+          <IoSwapVertical className="w-5 h-5 text-fuchsia-400" />
+        </button>
       </div>
 
       {/* You Buy Panel */}
-      <div className="bg-[#2A2A2A] p-4 rounded-xl mt-2 relative">
-        <div className="flex justify-between items-center">
-          <div className="text-xs text-gray-400">You Buy</div>
+      <div className="bg-zinc-800 p-5 rounded-2xl mt-3 border border-zinc-700 shadow-lg relative">
+        <div className="flex justify-between items-center mb-2">
+          <div className="text-xs text-gray-300 uppercase tracking-wider">You Buy</div>
           {walletConnected && toTokenBalance && (
-            <span className="text-xs text-gray-400">Balance: {parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(6)}</span>
+            <span className="text-sm text-gray-400">Balance: {parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(6)}</span>
           )}
         </div>
-        <div className="flex justify-between items-end items-center">
+        <div className="flex justify-between items-end">
           <input
-            className="bg-transparent text-3xl outline-none w-full mt-1 font-orbitron"
-            placeholder="0"
+            className="bg-transparent text-4xl outline-none w-full font-orbitron placeholder-gray-500 text-white"
+            placeholder="0.0"
             value={toValue}
             readOnly
           />
           <button 
-            className="text-md flex items-center gap-1 bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-1 rounded-lg ml-2 text-white"
+            className="text-lg flex items-center gap-2 bg-gradient-to-r from-pink-600 to-purple-700 hover:from-pink-500 hover:to-purple-600 px-4 py-2 rounded-xl ml-2 text-white font-semibold transition-all duration-200 shadow-lg"
             onClick={() => setIsToTokenModalOpen(true)}
           >
-            {toToken.symbol === 'Select Token' ? 'Select token' : <img src={toToken.logo} alt={toToken.symbol} className="w-6 h-6 mr-1 rounded-full" />}
+            {toToken.symbol === 'Select Token' ? 'Select token' : (toToken.logo && <img src={toToken.logo} alt={toToken.symbol} className="w-7 h-7 rounded-full" />)}
             {toToken.symbol === 'Select Token' ? '' : toToken.symbol}
-            <ChevronDownIcon className="w-4 h-4" />
+            <ChevronDownIcon className="w-5 h-5" />
           </button>
         </div>
-        {/* <div className="text-sm text-gray-500 mt-1">$0</div> */}
       </div>
 
       {/* Price Impact and Slippage */}
-      <div className="flex justify-between items-center text-sm text-gray-400 mt-4">
-        <span>Price Impact:</span>
-        <span className={classNames("font-semibold", parseFloat(priceImpact) > 1 ? "text-red-500" : "text-green-500")}>{priceImpact}%</span>
+      <div className="mt-5 space-y-2 relative z-10">
+        <div className="flex justify-between items-center text-sm text-gray-300">
+          <span>Price Impact:</span>
+          <span className={classNames("font-semibold", parseFloat(priceImpact) > 1 ? "text-red-400" : "text-green-400")}>{priceImpact}%</span>
+        </div>
+        <div className="flex justify-between items-center text-sm text-gray-300">
+          <span>Slippage Tolerance:</span>
+          <span className="font-semibold text-fuchsia-400">{slippage}%</span>
+        </div>
       </div>
-      <div className="flex justify-between items-center text-sm text-gray-400 mt-2">
-        <span>Slippage Tolerance:</span>
-        <span className="font-semibold">{slippage}%</span>
-      </div>
-      {/* You might want to add a settings popup here to adjust slippage */}
 
       {/* Action Button */}
       {!walletConnected ? (
         <button
           onClick={handleConnectWallet}
-          className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 font-semibold text-white hover:opacity-90 transition"
+          className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 font-bold text-white text-lg hover:from-pink-500 hover:to-purple-600 transition-all duration-200 shadow-xl transform hover:scale-[1.01]"
         >
           Connect Wallet
         </button>
@@ -569,7 +572,7 @@ const SwapCard = ({
         <button
           onClick={handleApprove}
           disabled={isApproveLoading || !approveSimulateData?.request}
-          className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 font-semibold text-white hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 font-bold text-white text-lg hover:from-pink-500 hover:to-purple-600 transition-all duration-200 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
         </button>
@@ -577,7 +580,7 @@ const SwapCard = ({
         <button
           onClick={handleSwap}
           disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0}
-          className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 font-semibold text-white hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 to-purple-700 font-bold text-white text-lg hover:from-pink-500 hover:to-purple-600 transition-all duration-200 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           {isSwapLoading ? 'Swapping...' : 'Swap'}
         </button>
@@ -622,20 +625,20 @@ const SwapCard = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-700 p-6 text-left align-middle shadow-xl transition-all backdrop-filter backdrop-blur-lg">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-zinc-900 border border-zinc-700 p-6 text-left align-middle shadow-2xl transition-all backdrop-filter backdrop-blur-lg">
                   <div className="flex justify-between items-center mb-4">
-                    <Dialog.Title as="h3" className="text-xl font-medium leading-6 text-white font-['Orbitron']">
+                    <Dialog.Title as="h3" className="text-2xl font-medium leading-6 text-white font-['Orbitron']">
                       Select a token
                     </Dialog.Title>
                     <button
                       type="button"
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="p-1 rounded-full bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700 transition-colors"
                       onClick={() => setIsFromTokenModalOpen(false)}
                     >
                       <XMarkIcon className="h-6 w-6" />
                     </button>
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-4">
                     {renderTokenList(true)}
                   </div>
                 </Dialog.Panel>
@@ -671,20 +674,20 @@ const SwapCard = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-700 p-6 text-left align-middle shadow-xl transition-all backdrop-filter backdrop-blur-lg">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-3xl bg-zinc-900 border border-zinc-700 p-6 text-left align-middle shadow-2xl transition-all backdrop-filter backdrop-blur-lg">
                   <div className="flex justify-between items-center mb-4">
-                    <Dialog.Title as="h3" className="text-xl font-medium leading-6 text-white font-['Orbitron']">
+                    <Dialog.Title as="h3" className="text-2xl font-medium leading-6 text-white font-['Orbitron']">
                       Select a token
                     </Dialog.Title>
                     <button
                       type="button"
-                      className="text-gray-400 hover:text-white transition-colors"
+                      className="p-1 rounded-full bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700 transition-colors"
                       onClick={() => setIsToTokenModalOpen(false)}
                     >
                       <XMarkIcon className="h-6 w-6" />
                     </button>
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-4">
                     {renderTokenList(false)}
                   </div>
                 </Dialog.Panel>
