@@ -275,7 +275,7 @@ const SwapCard = ({ walletConnected, address, tokens, uniswapRouter, uniswapQuot
     };
 
     const handleMaxClick = () => {
-        if (fromTokenBalance && fromTokenBalance.value) {
+        if (walletConnected && fromTokenBalance && fromTokenBalance.value) {
             setFromValue(formatUnits(fromTokenBalance.value, fromToken.decimals));
         }
     };
