@@ -399,6 +399,14 @@ export default function SwapPage() {
               autoComplete="off"
               role="spinbutton"
             />
+            <button
+              className="ml-2 text-xs text-purple-400 font-semibold px-2 py-1 rounded bg-gray-700 hover:bg-purple-700 transition"
+              onClick={handleMaxClick}
+              type="button"
+              aria-label="Max"
+            >
+              MAX
+            </button>
             <button 
               className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
               onClick={() => setIsFromTokenModalOpen(true)}
@@ -507,7 +515,7 @@ export default function SwapPage() {
         ) : (
           <button
             onClick={handleSwap}
-            disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0}
+            disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0 || parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0')}
             className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-500 font-semibold text-white hover:from-green-600 hover:to-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
             aria-label="Swap ETH to USDC"
             role="button"
