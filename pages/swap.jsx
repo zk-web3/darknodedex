@@ -9,7 +9,7 @@ import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
-import { TOKENS, ERC20_ABI, WMON_TOKEN, MON_TOKEN } from '../src/utils/tokens';
+import { TOKENS, ERC20_ABI, WETH_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 
 function classNames(...classes) {
@@ -19,9 +19,9 @@ function classNames(...classes) {
 // Update explorer URL usage
 const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Monad explorer
 
-// Use MON as the default token
-const ETH_TOKEN = MON_TOKEN;
-const ALL_TOKENS = [ETH_TOKEN, ...TOKENS.filter(t => t.symbol !== 'MON')];
+// Use WETH as the default ETH token for Sepolia
+const ETH_TOKEN = WETH_TOKEN;
+const ALL_TOKENS = [ETH_TOKEN, ...TOKENS.filter(t => t.symbol !== 'WETH')];
 
 const initialFromToken = ETH_TOKEN || TOKENS[0];
 const initialToToken = TOKENS[1] || ETH_TOKEN;
@@ -125,7 +125,7 @@ export default function SwapPage() {
   // Uniswap Quote
   const publicClient = usePublicClient();
   // Helper to get the real token address for quoting (MON -> WMON)
-  const getQuoteTokenAddress = (token) => token && token.address === ETH_TOKEN.address ? WMON_TOKEN.address : token?.address;
+  const getQuoteTokenAddress = (token) => token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
     if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) return 0n;
     try {
