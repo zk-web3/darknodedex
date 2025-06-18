@@ -394,6 +394,10 @@ export default function SwapPage() {
                 placeholder="0"
                 value={fromValue}
                 onChange={handleFromValueChange}
+                aria-label={`Amount of ${safeFromToken.symbol || 'token'} to sell`}
+                inputMode="decimal"
+                autoComplete="off"
+                role="spinbutton"
               />
               <button 
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
@@ -429,6 +433,10 @@ export default function SwapPage() {
                 placeholder="0"
                 value={toValue}
                 readOnly
+                aria-label={`Amount of ${safeToToken.symbol || 'token'} to buy`}
+                inputMode="decimal"
+                autoComplete="off"
+                role="spinbutton"
               />
               <button 
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
@@ -483,6 +491,8 @@ export default function SwapPage() {
               onClick={handleSwap}
               disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0}
               className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-500 font-semibold text-white hover:from-green-600 hover:to-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
+              aria-label="Swap ETH to USDC"
+              role="button"
             >
               {isSwapLoading ? 'Swapping...' : 'Swap'}
             </button>
@@ -635,6 +645,12 @@ export default function SwapPage() {
             </Dialog>
           </Transition>
         )}
+        {/* Add aria-live region for status messages */}
+        <div aria-live="polite" className="sr-only">
+          {modalStatus === 'success' && `Swap successful: ${modalMessage}`}
+          {modalStatus === 'error' && `Swap failed: ${modalMessage}`}
+          {liquidityWarning && `Warning: ${liquidityWarning}`}
+        </div>
       </div>
     </Layout>
   );

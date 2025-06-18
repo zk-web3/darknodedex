@@ -36,23 +36,31 @@ export default function Navbar({ isConnected, address, handleConnectWallet, chai
   return (
     <nav className="bg-dark-secondary bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg py-4 px-8 flex items-center justify-between z-20 sticky top-0 h-20 border-b border-neon-purple/50" role="navigation" aria-label="Main Navigation">
       <div className="flex items-center">
-        <Link href="/">
-          <div className="text-3xl font-bold text-neon-pink cursor-pointer transition-colors duration-300 hover:text-neon-blue mr-8" tabIndex={0} aria-label="Go to homepage">
+        <Link href="/" passHref legacyBehavior>
+          <a className="text-3xl font-bold text-neon-pink cursor-pointer transition-colors duration-300 hover:text-neon-blue mr-8 focus:outline-none focus:ring-2 focus:ring-neon-blue" tabIndex={0} aria-label="Go to homepage" role="link">
             DN
-          </div>
+          </a>
         </Link>
         <div className="flex space-x-6 text-lg">
-          <Link href="/swap" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md" tabIndex={0} aria-label="Swap page">
-            Swap
+          <Link href="/swap" passHref legacyBehavior>
+            <a className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-neon-blue" tabIndex={0} aria-label="Swap page" role="link">
+              Swap
+            </a>
           </Link>
-          <Link href="/liquidity" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md" tabIndex={0} aria-label="Liquidity page">
-            Liquidity
+          <Link href="/liquidity" passHref legacyBehavior>
+            <a className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-neon-blue" tabIndex={0} aria-label="Liquidity page" role="link">
+              Liquidity
+            </a>
           </Link>
-          <Link href="/tokens" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md" tabIndex={0} aria-label="Tokens page">
-            Tokens
+          <Link href="/tokens" passHref legacyBehavior>
+            <a className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-neon-blue" tabIndex={0} aria-label="Tokens page" role="link">
+              Tokens
+            </a>
           </Link>
-          <Link href="/about" className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md" tabIndex={0} aria-label="About page">
-            About
+          <Link href="/about" passHref legacyBehavior>
+            <a className="text-neon-pink hover:text-neon-blue transition-colors duration-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-neon-blue" tabIndex={0} aria-label="About page" role="link">
+              About
+            </a>
           </Link>
         </div>
       </div>
