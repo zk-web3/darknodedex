@@ -12,26 +12,18 @@ export const ERC20_ABI = [
   "function transferFrom(address from, address to, uint256 amount) returns (bool)"
 ];
 
-export const MON_TOKEN = {
-  name: 'Monad',
-  symbol: 'MON',
-  address: '0x0000000000000000000000000000000000000000', // Native
-  decimals: 18,
-  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
-};
-
-export const WMON_TOKEN = {
-  name: 'Wrapped Monad',
-  symbol: 'WMON',
+export const WETH_TOKEN = {
+  name: 'Wrapped Ether',
+  symbol: 'WETH',
   address: '0x4200000000000000000000000000000000000006',
   decimals: 18,
-  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+  logo: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295',
 };
 
 export const USDC_TOKEN = {
   name: 'USD Coin',
   symbol: 'USDC',
-  address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+  address: '0x65aFADD39029741B3b8f0756952C74678c9cEC93',
   decimals: 6,
   logo: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389',
 };
@@ -39,14 +31,13 @@ export const USDC_TOKEN = {
 export const WBTC_TOKEN = {
   name: 'Wrapped Bitcoin',
   symbol: 'WBTC',
-  address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+  address: '0xA0a5Ad2296b38Bd3E3Eb59AeE5A6f97C5B0B1C1c',
   decimals: 8,
   logo: 'https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png',
 };
 
 export const TOKENS = [
-  MON_TOKEN,
-  WMON_TOKEN,
+  WETH_TOKEN,
   USDC_TOKEN,
   WBTC_TOKEN,
 ];

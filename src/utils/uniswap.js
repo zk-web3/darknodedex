@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 
-// Uniswap V3 Router 02 Address for Monad Testnet
-export const UNISWAP_ROUTER_ADDRESS = "0x1b8e2e6e5e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e";
-// Uniswap V3 Quoter V2 Address for Monad Testnet
-export const UNISWAP_QUOTER_ADDRESS = "0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a";
-export const UNISWAP_FACTORY_ADDRESS = "0x3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c";
-export const BASE_SEPOLIA_EXPLORER_URL = "https://monad-testnet.socialscan.io/";
+// Uniswap V3 Router 02 Address for Sepolia
+export const UNISWAP_ROUTER_ADDRESS = "0x2626664c2603336E57B271c5C0b26F421741e481";
+// Uniswap V3 Quoter V2 Address for Sepolia
+export const UNISWAP_QUOTER_ADDRESS = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
+export const UNISWAP_FACTORY_ADDRESS = "0x6FD8c6e6bB5C3a7e6e6e6e6e6e6e6e6e6e6e6e6";
+export const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.etherscan.io/";
 
 // Minimal ABI for Uniswap V3 Router 02 (exactInputSingle, exactOutputSingle, approve)
 export const UNISWAP_ROUTER_ABI = [
