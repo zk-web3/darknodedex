@@ -382,8 +382,10 @@ export default function SwapPage() {
         <div className="bg-[#2a2a2a] p-4 rounded-xl mb-3">
           <div className="flex justify-between items-center mb-2">
             <div className="text-xs text-gray-400">Sell</div>
-            {isConnected && fromTokenBalanceData && (
-              <button onClick={handleMaxClick} className="text-xs text-purple-400 font-semibold">MAX ({fromTokenBalanceData && fromTokenBalanceData.value ? parseFloat(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals)).toFixed(6) : '0.000000'})</button>
+            {isConnected && (
+              <span className="text-xs text-gray-400">
+                Balance: {fromTokenBalanceData && fromTokenBalanceData.value ? parseFloat(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals)).toFixed(6) : '0.000000'}
+              </span>
             )}
           </div>
           <div className="flex justify-between items-center">
@@ -421,8 +423,10 @@ export default function SwapPage() {
         <div className="bg-[#2a2a2a] p-4 rounded-xl mt-2">
           <div className="flex justify-between items-center mb-2">
             <div className="text-xs text-gray-400">Buy</div>
-            {isConnected && toTokenBalanceData && (
-              <span className="text-xs text-gray-400">Balance: {toTokenBalanceData && toTokenBalanceData.value ? parseFloat(formatUnits(toTokenBalanceData.value, safeToToken.decimals)).toFixed(6) : '0.000000'}</span>
+            {isConnected && (
+              <span className="text-xs text-gray-400">
+                Balance: {toTokenBalanceData && toTokenBalanceData.value ? parseFloat(formatUnits(toTokenBalanceData.value, safeToToken.decimals)).toFixed(6) : '0.000000'}
+              </span>
             )}
           </div>
           <div className="flex justify-between items-center">
