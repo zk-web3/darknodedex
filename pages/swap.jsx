@@ -23,8 +23,8 @@ const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Monad explorer
 const ETH_TOKEN = MON_TOKEN;
 const ALL_TOKENS = [ETH_TOKEN, ...TOKENS.filter(t => t.symbol !== 'MON')];
 
-const initialFromToken = ETH_TOKEN;
-const initialToToken = TOKENS[1];
+const initialFromToken = ETH_TOKEN || TOKENS[0];
+const initialToToken = TOKENS[1] || ETH_TOKEN;
 
 export default function SwapPage() {
   // Wallet
@@ -52,6 +52,10 @@ export default function SwapPage() {
   const [modalMessage, setModalMessage] = useState('');
   const [modalTxHash, setModalTxHash] = useState('');
   const [liquidityWarning, setLiquidityWarning] = useState('');
+
+  // Defensive: fallback to empty object if fromToken/toToken is undefined
+  const safeFromToken = fromToken || { address: '', symbol: '', decimals: 18, logo: '' };
+  const safeToToken = toToken || { address: '', symbol: '', decimals: 18, logo: '' };
 
   // Wallet Connect Handler
   const handleConnectWallet = async () => {
@@ -83,17 +87,17 @@ export default function SwapPage() {
   // Balances
   const { data: fromTokenBalanceData } = useBalance({
     address,
-    token: fromToken.address === ETH_TOKEN.address ? undefined : fromToken.address,
-    query: { enabled: isConnected, watch: true },
+    token: safeFromToken.address === ETH_TOKEN.address ? undefined : safeFromToken.address,
+    query: { enabled: isConnected && !!safeFromToken.address, watch: true },
   });
   const { data: toTokenBalanceData } = useBalance({
     address,
-    token: toToken.address === ETH_TOKEN.address ? undefined : toToken.address,
-    query: { enabled: isConnected, watch: true },
+    token: safeToToken.address === ETH_TOKEN.address ? undefined : safeToToken.address,
+    query: { enabled: isConnected && !!safeToToken.address, watch: true },
   });
 
   // All token balances for dropdown
-  const erc20TokenContracts = ALL_TOKENS.filter(token => token.address !== ETH_TOKEN.address).map(token => ({
+  const erc20TokenContracts = ALL_TOKENS.filter(token => token.address && token.address !== ETH_TOKEN.address).map(token => ({
     address: token.address,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -121,9 +125,9 @@ export default function SwapPage() {
   // Uniswap Quote
   const publicClient = usePublicClient();
   // Helper to get the real token address for quoting (MON -> WMON)
-  const getQuoteTokenAddress = (token) => token.address === ETH_TOKEN.address ? WMON_TOKEN.address : token.address;
+  const getQuoteTokenAddress = (token) => token && token.address === ETH_TOKEN.address ? WMON_TOKEN.address : token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
-    if (!publicClient || !currentFromToken || !currentToToken || amountInBigInt === 0n) return 0n;
+    if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) return 0n;
     try {
       const quote = await publicClient.readContract({
         address: UNISWAP_QUOTER_ADDRESS,
@@ -147,15 +151,15 @@ export default function SwapPage() {
   useEffect(() => {
     const fetchQuote = async () => {
       setLiquidityWarning('');
-      if (fromValue && fromToken && toToken && publicClient && fromValue !== '0' && fromValue !== '') {
+      if (fromValue && safeFromToken && safeToToken && publicClient && fromValue !== '0' && fromValue !== '' && safeFromToken.address && safeToToken.address) {
         try {
-          const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
+          const amountInBigInt = parseUnits(fromValue, safeFromToken.decimals);
           if (amountInBigInt > 0n) {
-            const quotedAmountOut = await getQuote(amountInBigInt, fromToken, toToken);
-            setToValue(formatUnits(quotedAmountOut, toToken.decimals));
+            const quotedAmountOut = await getQuote(amountInBigInt, safeFromToken, safeToToken);
+            setToValue(formatUnits(quotedAmountOut, safeToToken.decimals));
             // Check liquidity for a small amount
-            const testAmount = parseUnits('0.01', fromToken.decimals);
-            const testQuote = await getQuote(testAmount, fromToken, toToken);
+            const testAmount = parseUnits('0.01', safeFromToken.decimals);
+            const testQuote = await getQuote(testAmount, safeFromToken, safeToToken);
             if (testQuote === 0n) {
               setLiquidityWarning('No liquidity for this pair.');
             }
@@ -171,16 +175,16 @@ export default function SwapPage() {
     };
     const debounceFetch = setTimeout(fetchQuote, 300);
     return () => clearTimeout(debounceFetch);
-  }, [fromValue, fromToken, toToken, publicClient, getQuote]);
+  }, [fromValue, safeFromToken, safeToToken, publicClient, getQuote]);
 
   // Price Impact
   const calculatePriceImpact = useCallback(async () => {
-    if (fromValue && toValue && fromToken && toToken && publicClient && parseUnits(fromValue, fromToken.decimals) > 0n) {
-      const smallAmountIn = parseUnits('1', fromToken.decimals);
-      const smallQuoteOut = await getQuote(smallAmountIn, fromToken, toToken);
+    if (fromValue && toValue && safeFromToken && safeToToken && publicClient && safeFromToken.address && safeToToken.address && parseUnits(fromValue, safeFromToken.decimals) > 0n) {
+      const smallAmountIn = parseUnits('1', safeFromToken.decimals);
+      const smallQuoteOut = await getQuote(smallAmountIn, safeFromToken, safeToToken);
       if (smallQuoteOut > 0n) {
-        const smallAmountInNum = parseFloat(formatUnits(smallAmountIn, fromToken.decimals));
-        const smallQuoteOutNum = parseFloat(formatUnits(smallQuoteOut, toToken.decimals));
+        const smallAmountInNum = parseFloat(formatUnits(smallAmountIn, safeFromToken.decimals));
+        const smallQuoteOutNum = parseFloat(formatUnits(smallQuoteOut, safeToToken.decimals));
         const marketPriceRatio = smallQuoteOutNum / smallAmountInNum;
         const expectedOutput = parseFloat(fromValue) * marketPriceRatio;
         const actualOutput = parseFloat(toValue);
@@ -196,7 +200,7 @@ export default function SwapPage() {
     } else {
       setPriceImpact('0.00');
     }
-  }, [fromValue, toValue, fromToken, toToken, publicClient, getQuote]);
+  }, [fromValue, toValue, safeFromToken, safeToToken, publicClient, getQuote]);
   useEffect(() => { calculatePriceImpact(); }, [calculatePriceImpact]);
 
   // Approval
