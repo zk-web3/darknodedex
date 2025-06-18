@@ -12,38 +12,43 @@ export const ERC20_ABI = [
   "function transferFrom(address from, address to, uint256 amount) returns (bool)"
 ];
 
-export const WETH_ABI = ERC20_ABI;
-export const USDC_ABI = ERC20_ABI;
-export const DN_ABI = ERC20_ABI;
-
-export const WETH_TOKEN = {
-  name: 'Wrapped Ether',
-  symbol: 'WETH',
-  address: '0x4200000000000000000000000000000000000006', // WETH on Base Sepolia
+export const MON_TOKEN = {
+  name: 'Monad',
+  symbol: 'MON',
+  address: '0x0000000000000000000000000000000000000000', // Native
   decimals: 18,
-  logo: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295',
+  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+};
+
+export const WMON_TOKEN = {
+  name: 'Wrapped Monad',
+  symbol: 'WMON',
+  address: '0x4200000000000000000000000000000000000006',
+  decimals: 18,
+  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
 };
 
 export const USDC_TOKEN = {
   name: 'USD Coin',
   symbol: 'USDC',
-  address: '0x833589fCD6eDb6E08f954C3dc3B9D50edEe08467', // USDC on Base Sepolia
+  address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
   decimals: 6,
   logo: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389',
 };
 
-export const DN_TOKEN = {
-  name: 'DarkNode Token',
-  symbol: 'DN',
-  address: '0x7a232f05a5a6D0803534b7f8B47C569D9E06716a', // Placeholder - REPLACE WITH YOUR DEPLOYED DN TOKEN ADDRESS
-  decimals: 18,
-  logo: 'https://via.placeholder.com/24/purple/white?text=DN',
+export const WBTC_TOKEN = {
+  name: 'Wrapped Bitcoin',
+  symbol: 'WBTC',
+  address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+  decimals: 8,
+  logo: 'https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png',
 };
 
 export const TOKENS = [
-  WETH_TOKEN,
+  MON_TOKEN,
+  WMON_TOKEN,
   USDC_TOKEN,
-  DN_TOKEN,
+  WBTC_TOKEN,
 ];
 
 export const TOKENS_BY_ADDRESS = TOKENS.reduce((acc, token) => {

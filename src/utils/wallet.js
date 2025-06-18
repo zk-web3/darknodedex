@@ -1,13 +1,26 @@
 import { http, createConfig } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+// Monad Testnet chain config
+const monadTestnet = {
+  id: 10143,
+  name: 'Monad Testnet',
+  network: 'monad-testnet',
+  nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
+  rpcUrls: {
+    default: { http: ['https://testnet-rpc.monad.xyz'] },
+    public: { http: ['https://testnet-rpc.monad.xyz'] },
+  },
+  blockExplorers: {
+    default: { name: 'MonadScan', url: 'https://monad-testnet.socialscan.io/' },
+  },
+  testnet: true,
+};
 import { injected } from 'wagmi/connectors';
-
 export const config = createConfig({
-  chains: [baseSepolia],
+  chains: [monadTestnet],
   connectors: [
     injected(),
   ],
   transports: {
-    [baseSepolia.id]: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL),
+    [monadTestnet.id]: http('https://testnet-rpc.monad.xyz'),
   },
 }); 
