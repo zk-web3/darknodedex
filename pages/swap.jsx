@@ -346,9 +346,9 @@ export default function SwapPage() {
                   <div className="flex flex-col items-start">
                     <span className="text-white text-lg font-semibold">{token.symbol || ''}</span>
                     <span className="text-gray-400 text-sm">{token.name || ''}</span>
-                    {isConnected && allTokensBalances[token.address] !== undefined && (
+                    {isConnected && (
                       <span className="text-gray-400 text-xs">
-                        Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
+                        Balance: {token.symbol === 'ETH' ? fromTokenBalanceData?.formatted || '0.0000' : toTokenBalanceData?.formatted || '0.0000'}
                       </span>
                     )}
                   </div>
@@ -515,7 +515,7 @@ export default function SwapPage() {
         ) : (
           <button
             onClick={handleSwap}
-            disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0 || parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0')}
+            disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0 || parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0') || !isValidPair(safeFromToken, safeToToken)}
             className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-500 font-semibold text-white hover:from-green-600 hover:to-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
             aria-label="Swap ETH to USDC"
             role="button"
@@ -680,3 +680,9 @@ export default function SwapPage() {
     </div>
   );
 }
+
+// In the swap button, disable if !isValidPair(safeFromToken, safeToToken)
+const isValidPair = (from, to) => (
+  (from.symbol === 'ETH' && to.symbol === 'USDC') ||
+  (from.symbol === 'USDC' && to.symbol === 'ETH')
+);
