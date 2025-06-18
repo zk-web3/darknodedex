@@ -14,6 +14,7 @@ import { WETH_TOKEN } from '../src/utils/tokens';
 import { ethers } from 'ethers';
 import ERC20_ABI from '../src/abis/ERC20.json';
 import SWAP_ROUTER_ABI from '../src/abis/UniswapV3SwapRouter.json';
+import QUOTER_ABI from '../src/abis/UniswapV3Quoter.json';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -34,6 +35,10 @@ const ALL_TOKENS = [ETH_TOKEN, USDC_TOKEN];
 
 const initialFromToken = ETH_TOKEN;
 const initialToToken = USDC_TOKEN;
+
+const UNISWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
+const UNISWAP_QUOTER = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 
 export default function SwapPage() {
   // Wallet
@@ -66,6 +71,9 @@ export default function SwapPage() {
   const [swapError, setSwapError] = useState('');
   const [swapTxHash, setSwapTxHash] = useState('');
   const [allowance, setAllowance] = useState('0');
+  const [estimatedOut, setEstimatedOut] = useState('');
+  const [slippageWarning, setSlippageWarning] = useState('');
+  const [gasEstimate, setGasEstimate] = useState('');
 
   // Defensive: fallback to empty object if fromToken/toToken is undefined
   const safeFromToken = fromToken || { address: '', symbol: '', decimals: 18, logo: '' };
@@ -267,6 +275,64 @@ export default function SwapPage() {
     erc20.allowance(address, UNISWAP_ROUTER).then(a => setAllowance(a.toString()));
   }, [isConnected, address, safeFromToken]);
 
+  // Uniswap Quoter: Estimate output
+  useEffect(() => {
+    async function fetchQuote() {
+      if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setEstimatedOut('');
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const quoter = new ethers.Contract(UNISWAP_QUOTER, QUOTER_ABI, provider);
+        const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
+        const quoted = await quoter.quoteExactInputSingle(
+          safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
+          safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
+          3000,
+          amountIn,
+          0
+        );
+        setEstimatedOut(ethers.utils.formatUnits(quoted, safeToToken.decimals));
+        setSlippageWarning(parseFloat(fromValue) > 0 && parseFloat(quoted) === 0 ? 'No liquidity for this pair.' : '');
+      } catch (e) {
+        setEstimatedOut('');
+        setSlippageWarning('No liquidity or error fetching quote.');
+      }
+    }
+    fetchQuote();
+  }, [fromValue, safeFromToken, safeToToken, isConnected]);
+
+  // Gas Estimation
+  useEffect(() => {
+    async function estimateGas() {
+      if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setGasEstimate('');
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const router = new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer);
+        const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
+        const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
+        const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
+        const params = {
+          tokenIn: safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
+          tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
+          fee: 3000,
+          recipient: address,
+          deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+          amountIn,
+          amountOutMinimum: minAmountOut,
+          sqrtPriceLimitX96: 0,
+        };
+        const gas = await router.estimateGas.exactInputSingle(
+          params,
+          { value: safeFromToken.symbol === 'ETH' ? amountIn : 0 }
+        );
+        setGasEstimate(gas.toString());
+      } catch (e) {
+        setGasEstimate('');
+      }
+    }
+    estimateGas();
+  }, [fromValue, safeFromToken, safeToToken, isConnected, estimatedOut, slippage]);
+
   // Approve USDC if needed
   const handleApprove = async () => {
     setApproveLoading(true);
@@ -284,7 +350,7 @@ export default function SwapPage() {
     setApproveLoading(false);
   };
 
-  // Swap function
+  // Swap function (ETH <-> USDC)
   const handleSwap = async () => {
     setSwapLoading(true);
     setSwapError('');
@@ -294,11 +360,11 @@ export default function SwapPage() {
       const signer = provider.getSigner();
       const router = new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer);
       const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
-      // Placeholder: set a minimum amount out (slippage logic)
-      const minAmountOut = 0; // TODO: Use real quote and slippage
+      const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
+      const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
       const params = {
-        tokenIn: safeFromToken.symbol === 'ETH' ? WETH_TOKEN.address : safeFromToken.address,
-        tokenOut: safeToToken.symbol === 'ETH' ? WETH_TOKEN.address : safeToToken.address,
+        tokenIn: safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
+        tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
         fee: 3000,
         recipient: address,
         deadline: Math.floor(Date.now() / 1000) + 60 * 10,
