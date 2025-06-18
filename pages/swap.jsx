@@ -9,10 +9,10 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, useP
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
 import { TOKENS, USDC_TOKEN } from '../src/utils/tokens';
+import ERC20_ABI from '../src/abis/ERC20.json';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { WETH_TOKEN } from '../src/utils/tokens';
 import { ethers } from 'ethers';
-import ERC20_ABI from '../src/abis/ERC20.json';
 import SWAP_ROUTER_ABI from '../src/abis/UniswapV3SwapRouter.json';
 import QUOTER_ABI from '../src/abis/UniswapV3Quoter.json';
 
