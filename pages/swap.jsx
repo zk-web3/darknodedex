@@ -9,8 +9,9 @@ import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
-import { TOKENS, ERC20_ABI, WETH_TOKEN, USDC_TOKEN } from '../src/utils/tokens';
+import { TOKENS, ERC20_ABI, USDC_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
+import { WETH_TOKEN } from '../src/utils/tokens';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -19,8 +20,14 @@ function classNames(...classes) {
 // Update explorer URL usage
 const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Monad explorer
 
-// Use WETH as the default ETH token for Sepolia
-const ETH_TOKEN = WETH_TOKEN;
+// Remove WETH from ALL_TOKENS and use native ETH
+const ETH_TOKEN = {
+  name: 'Ether',
+  symbol: 'ETH',
+  address: undefined, // Native ETH has no address
+  decimals: 18,
+  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+};
 const ALL_TOKENS = [ETH_TOKEN, USDC_TOKEN];
 
 const initialFromToken = ETH_TOKEN;
@@ -124,8 +131,8 @@ export default function SwapPage() {
 
   // Uniswap Quote
   const publicClient = usePublicClient();
-  // Helper to get the real token address for quoting (MON -> WMON)
-  const getQuoteTokenAddress = (token) => token?.address;
+  // Update getQuoteTokenAddress to handle native ETH (return WETH address for Uniswap contract calls)
+  const getQuoteTokenAddress = (token) => token && token.symbol === 'ETH' ? WETH_TOKEN.address : token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
     if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) return 0n;
     try {
