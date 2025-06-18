@@ -9,15 +9,25 @@ import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
-import { TOKENS, ERC20_ABI } from '../src/utils/tokens';
+import { TOKENS, ERC20_ABI, WETH_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-const initialFromToken = TOKENS[0];
-const initialToToken = TOKENS[1];
+// Add ETH as a pseudo-token for UI
+const ETH_TOKEN = {
+  name: 'Ethereum',
+  symbol: 'ETH',
+  address: '0x0000000000000000000000000000000000000000',
+  decimals: 18,
+  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+};
+const ALL_TOKENS = [ETH_TOKEN, ...TOKENS];
+
+const initialFromToken = ETH_TOKEN;
+const initialToToken = TOKENS[0];
 
 export default function SwapPage() {
   // Wallet
@@ -44,6 +54,7 @@ export default function SwapPage() {
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [modalTxHash, setModalTxHash] = useState('');
+  const [liquidityWarning, setLiquidityWarning] = useState('');
 
   // Wallet Connect Handler
   const handleConnectWallet = async () => {
@@ -75,17 +86,17 @@ export default function SwapPage() {
   // Balances
   const { data: fromTokenBalanceData } = useBalance({
     address,
-    token: fromToken.address,
+    token: fromToken.address === ETH_TOKEN.address ? undefined : fromToken.address,
     query: { enabled: isConnected, watch: true },
   });
   const { data: toTokenBalanceData } = useBalance({
     address,
-    token: toToken.address,
+    token: toToken.address === ETH_TOKEN.address ? undefined : toToken.address,
     query: { enabled: isConnected, watch: true },
   });
 
   // All token balances for dropdown
-  const erc20TokenContracts = TOKENS.map(token => ({
+  const erc20TokenContracts = ALL_TOKENS.filter(token => token.address !== ETH_TOKEN.address).map(token => ({
     address: token.address,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -98,7 +109,7 @@ export default function SwapPage() {
       watch: true,
       select: (data) => {
         const balancesMap = {};
-        TOKENS.forEach((token, index) => {
+        ALL_TOKENS.forEach((token, index) => {
           const balance = data[index]?.result;
           if (balance !== undefined) {
             balancesMap[token.address] = formatUnits(balance, token.decimals);
@@ -112,6 +123,8 @@ export default function SwapPage() {
 
   // Uniswap Quote
   const publicClient = usePublicClient();
+  // Helper to get the real token address for quoting (ETH -> WETH)
+  const getQuoteTokenAddress = (token) => token.address === ETH_TOKEN.address ? WETH_TOKEN.address : token.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
     if (!publicClient || !currentFromToken || !currentToToken || amountInBigInt === 0n) return 0n;
     try {
@@ -120,28 +133,35 @@ export default function SwapPage() {
         abi: UNISWAP_QUOTER_ABI,
         functionName: 'quoteExactInputSingle',
         args: [{
-          tokenIn: currentFromToken.address,
-          tokenOut: currentToToken.address,
+          tokenIn: getQuoteTokenAddress(currentFromToken),
+          tokenOut: getQuoteTokenAddress(currentToToken),
           amountIn: amountInBigInt,
           fee: 3000,
           sqrtPriceLimitX96: 0n,
         }],
       });
+      // Uniswap V3 Quoter V2 returns [amountOut, ...]
       return BigInt(Array.isArray(quote) ? quote[0] : quote);
     } catch (error) {
-      toast.error('Error getting quote');
       return 0n;
     }
   }, [publicClient]);
 
   useEffect(() => {
     const fetchQuote = async () => {
+      setLiquidityWarning('');
       if (fromValue && fromToken && toToken && publicClient && fromValue !== '0' && fromValue !== '') {
         try {
           const amountInBigInt = parseUnits(fromValue, fromToken.decimals);
           if (amountInBigInt > 0n) {
             const quotedAmountOut = await getQuote(amountInBigInt, fromToken, toToken);
             setToValue(formatUnits(quotedAmountOut, toToken.decimals));
+            // Check liquidity for a small amount
+            const testAmount = parseUnits('0.01', fromToken.decimals);
+            const testQuote = await getQuote(testAmount, fromToken, toToken);
+            if (testQuote === 0n) {
+              setLiquidityWarning('No liquidity for this pair.');
+            }
           } else {
             setToValue('');
           }
@@ -183,13 +203,13 @@ export default function SwapPage() {
   useEffect(() => { calculatePriceImpact(); }, [calculatePriceImpact]);
 
   // Approval
-  const amountToApproveBigInt = fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n;
+  const amountToApproveBigInt = fromValue && fromToken.address !== ETH_TOKEN.address ? parseUnits(fromValue, fromToken.decimals) : 0n;
   const { data: approveSimulateData, error: approveSimulateError } = useSimulateContract({
-    address: fromToken.address,
+    address: fromToken.address === ETH_TOKEN.address ? undefined : fromToken.address,
     abi: ERC20_ABI,
     functionName: 'approve',
     args: [UNISWAP_ROUTER_ADDRESS, MaxUint256],
-    query: { enabled: isConnected && amountToApproveBigInt > 0n },
+    query: { enabled: isConnected && amountToApproveBigInt > 0n && fromToken.address !== ETH_TOKEN.address },
   });
   const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
   const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransactionReceipt({ hash: approveWriteData?.hash });
@@ -205,7 +225,7 @@ export default function SwapPage() {
   }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
 
   const checkApproval = useCallback(async () => {
-    if (isConnected && address && publicClient && fromToken && fromValue) {
+    if (isConnected && address && publicClient && fromToken && fromValue && fromToken.address !== ETH_TOKEN.address) {
       try {
         const allowance = await publicClient.readContract({
           address: fromToken.address,
@@ -231,8 +251,8 @@ export default function SwapPage() {
     abi: UNISWAP_ROUTER_ABI,
     functionName: 'exactInputSingle',
     args: [{
-      tokenIn: fromToken.address,
-      tokenOut: toToken.address,
+      tokenIn: getQuoteTokenAddress(fromToken),
+      tokenOut: getQuoteTokenAddress(toToken),
       fee: 3000,
       recipient: address,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
@@ -240,9 +260,9 @@ export default function SwapPage() {
       amountOutMinimum: amountOutMin,
       sqrtPriceLimitX96: 0n,
     }],
-    value: 0n,
+    value: fromToken.address === ETH_TOKEN.address ? parseUnits(fromValue || '0', fromToken.decimals) : 0n,
     query: {
-      enabled: isConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval,
+      enabled: isConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval && !liquidityWarning,
     },
   });
   const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
@@ -293,7 +313,7 @@ export default function SwapPage() {
 
   // Token List Modal
   const renderTokenList = (isFrom) => {
-    const filteredTokens = TOKENS.filter(token =>
+    const filteredTokens = ALL_TOKENS.filter(token =>
       token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -422,6 +442,18 @@ export default function SwapPage() {
             <span>Slippage Tolerance:</span>
             <span className="font-semibold">{slippage}%</span>
           </div>
+          {/* Quoter summary */}
+          <div className="flex justify-between items-center text-md text-gray-300 mt-4">
+            <span>You pay:</span>
+            <span className="font-semibold">{fromValue || '0'} {fromToken.symbol}</span>
+          </div>
+          <div className="flex justify-between items-center text-md text-gray-300 mt-1">
+            <span>You get:</span>
+            <span className="font-semibold">{toValue || '0'} {toToken.symbol}</span>
+          </div>
+          {liquidityWarning && (
+            <div className="mt-4 text-center text-red-400 font-semibold">{liquidityWarning}</div>
+          )}
           {/* Action Button */}
           {!isConnected ? (
             <button
