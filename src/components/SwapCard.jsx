@@ -78,28 +78,32 @@ const SwapCard = ({
 
   const publicClient = usePublicClient();
 
+  // Defensive: fallback to empty object if fromToken/toToken is undefined
+  const safeFromToken = fromToken || { address: '', symbol: '', decimals: 18, logo: '' };
+  const safeToToken = toToken || { address: '', symbol: '', decimals: 18, logo: '' };
+
   // Fetch balances for selected tokens (for display next to input fields)
   const { data: fromTokenBalanceData } = useBalance({
     address: address,
-    token: fromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : fromToken.address,
-    query: { enabled: walletConnected && fromToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
+    token: safeFromToken.address === '0x0000000000000000000000000000000000000000' ? undefined : safeFromToken.address,
+    query: { enabled: walletConnected && safeFromToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
   });
   const { data: ethBalanceData } = useBalance({
     address: address,
-    query: { enabled: walletConnected && fromToken.address === '0x0000000000000000000000000000000000000000', watch: true },
+    query: { enabled: walletConnected && safeFromToken.address === '0x0000000000000000000000000000000000000000', watch: true },
   });
-  const fromTokenBalance = fromToken.address === '0x0000000000000000000000000000000000000000' ? ethBalanceData : fromTokenBalanceData;
+  const fromTokenBalance = safeFromToken.address === '0x0000000000000000000000000000000000000000' ? ethBalanceData : fromTokenBalanceData;
 
   const { data: toTokenBalanceData } = useBalance({
     address: address,
-    token: toToken.address === '0x0000000000000000000000000000000000000000' ? undefined : toToken.address,
-    query: { enabled: walletConnected && toToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
+    token: safeToToken.address === '0x0000000000000000000000000000000000000000' ? undefined : safeToToken.address,
+    query: { enabled: walletConnected && safeToToken.address !== '0x0000000000000000000000000000000000000000', watch: true },
   });
   const { data: toEthBalanceData } = useBalance({
     address: address,
-    query: { enabled: walletConnected && toToken.address === '0x0000000000000000000000000000000000000000', watch: true },
+    query: { enabled: walletConnected && safeToToken.address === '0x0000000000000000000000000000000000000000', watch: true },
   });
-  const toTokenBalance = toToken.address === '0x0000000000000000000000000000000000000000' ? toEthBalanceData : toTokenBalanceData;
+  const toTokenBalance = safeToToken.address === '0x0000000000000000000000000000000000000000' ? toEthBalanceData : toTokenBalanceData;
 
   // Fetch balances for ALL tokens in the list for the dropdowns
   const [allTokensBalances, setAllTokensBalances] = useState({});
@@ -151,8 +155,8 @@ const SwapCard = ({
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
     if (!publicClient || !uniswapQuoter || !currentFromToken || !currentToToken || amountInBigInt === 0n) return 0n;
 
-    const tokenInForQuote = currentFromToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : currentFromToken.address;
-    const tokenOutForQuote = currentToToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : currentToToken.address;
+    const tokenInForQuote = currentFromToken.address === '0x0000000000000000000000000000000000000000' ? tokens?.find(t => t.symbol === 'WETH')?.address : currentFromToken.address;
+    const tokenOutForQuote = currentToToken.address === '0x0000000000000000000000000000000000000000' ? tokens?.find(t => t.symbol === 'WETH')?.address : currentToToken.address;
 
     if (!tokenInForQuote || !tokenOutForQuote) {
       console.error("WETH address not found in tokens for quoting.");
@@ -230,44 +234,45 @@ const SwapCard = ({
   }, [fromValue, toValue, fromToken, toToken, publicClient, getQuote]);
 
   useEffect(() => {
+    if (!safeFromToken || !safeToToken) return;
     calculatePriceImpact();
-  }, [calculatePriceImpact]);
+  }, [calculatePriceImpact, safeFromToken, safeToToken]);
 
-  const amountToApproveBigInt = fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000'
-    ? parseUnits(fromValue, fromToken.decimals)
+  const amountToApproveBigInt = fromValue && safeFromToken.address !== '0x0000000000000000000000000000000000000000'
+    ? parseUnits(fromValue, safeFromToken.decimals)
     : 0n;
 
   const { data: approveSimulateData, error: approveSimulateError } = useSimulateContract({
-    address: fromToken.address,
+    address: safeFromToken.address,
     abi: erc20Abi,
     functionName: 'approve',
     args: [uniswapRouter.address, MaxUint256], // Approving max amount
-    query: { enabled: walletConnected && amountToApproveBigInt > 0n && fromToken.address !== '0x0000000000000000000000000000000000000000' },
+    query: { enabled: walletConnected && amountToApproveBigInt > 0n && safeFromToken.address !== '0x0000000000000000000000000000000000000000' },
   });
   const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
   const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransactionReceipt({ hash: approveWriteData?.hash });
 
   useEffect(() => {
     if (isApproveLoading) {
-      openTxStatusModal('loading', 'Approving...', `Approving ${fromToken.symbol} for spending by the router.`);
+      openTxStatusModal('loading', 'Approving...', `Approving ${safeFromToken.symbol} for spending by the router.`);
     } else if (isApproveSuccess) {
-      openTxStatusModal('success', 'Approval Successful!', `You have successfully approved ${fromToken.symbol}.`, approveTxData?.transactionHash);
+      openTxStatusModal('success', 'Approval Successful!', `You have successfully approved ${safeFromToken.symbol}.`, approveTxData?.transactionHash);
       checkApproval(); // Re-check approval after successful approval
     } else if (isApproveErrorTx) {
-      openTxStatusModal('error', 'Approval Failed', `Error approving ${fromToken.symbol}: ${approveSimulateError?.shortMessage || approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
+      openTxStatusModal('error', 'Approval Failed', `Error approving ${safeFromToken.symbol}: ${approveSimulateError?.shortMessage || approveSimulateError?.message || 'Transaction failed.'}`, approveTxData?.transactionHash);
     }
-  }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol, checkApproval]);
+  }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, safeFromToken.symbol, checkApproval]);
 
   const checkApproval = useCallback(async () => {
-    if (walletConnected && address && publicClient && fromToken && fromValue && fromToken.address !== '0x0000000000000000000000000000000000000000') {
+    if (walletConnected && address && publicClient && safeFromToken && fromValue && safeFromToken.address !== '0x0000000000000000000000000000000000000000') {
       try {
         const allowance = await publicClient.readContract({
-          address: fromToken.address,
+          address: safeFromToken.address,
           abi: erc20Abi,
           functionName: 'allowance',
           args: [address, uniswapRouter.address],
         });
-        const amountIn = parseUnits(fromValue || '0', fromToken.decimals); // Handle empty fromValue
+        const amountIn = parseUnits(fromValue || '0', safeFromToken.decimals); // Handle empty fromValue
         setNeedsApproval(allowance < amountIn);
       } catch (error) {
         console.error("Error checking approval:", error);
@@ -276,7 +281,7 @@ const SwapCard = ({
     } else {
       setNeedsApproval(false); // No approval needed for ETH or if not connected/no value
     }
-  }, [walletConnected, address, publicClient, fromToken, fromValue, uniswapRouter.address, erc20Abi]);
+  }, [walletConnected, address, publicClient, safeFromToken, fromValue, uniswapRouter.address, erc20Abi]);
 
   useEffect(() => {
     checkApproval();
@@ -284,20 +289,20 @@ const SwapCard = ({
 
   const handleFromValueChange = (e) => {
     const value = e.target.value;
-    if (value === '' || /^\\d*\\.?\\d*$/.test(value)) {
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setFromValue(value);
     }
   };
 
   const handleMaxClick = () => {
     if (walletConnected && fromTokenBalance && fromTokenBalance.value) {
-      setFromValue(formatUnits(fromTokenBalance.value, fromToken.decimals));
+      setFromValue(formatUnits(fromTokenBalance.value, safeFromToken.decimals));
     }
   };
 
   const handleSwapTokens = () => {
-    const tempFromToken = fromToken;
-    const tempToToken = toToken;
+    const tempFromToken = safeFromToken;
+    const tempToToken = safeToToken;
     const tempFromValue = fromValue;
     const tempToValue = toValue;
 
@@ -321,7 +326,7 @@ const SwapCard = ({
     }
 
     try {
-      openTxStatusModal('loading', 'Approving Token...', `Please confirm the approval transaction for ${fromToken.symbol} in your wallet.`);
+      openTxStatusModal('loading', 'Approving Token...', `Please confirm the approval transaction for ${safeFromToken.symbol} in your wallet.`);
       writeApprove(approveSimulateData.request);
     } catch (error) {
       console.error("Approval transaction failed:", error);
@@ -329,32 +334,32 @@ const SwapCard = ({
     }
   };
 
-  const amountOutMin = toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
+  const amountOutMin = toValue ? parseUnits(toValue, safeToToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
 
   const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
     address: uniswapRouter.address,
     abi: uniswapRouter.abi,
-    functionName: fromToken.address === '0x0000000000000000000000000000000000000000' ? 'exactInputSingle' : 'exactInputSingle',
-    args: fromToken.address === '0x0000000000000000000000000000000000000000' ? [{
-      tokenIn: tokens.find(t => t.symbol === 'WETH')?.address, // Use WETH for ETH swaps
-      tokenOut: toToken.address,
-      amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
+    functionName: safeFromToken.address === '0x0000000000000000000000000000000000000000' ? 'exactInputSingle' : 'exactInputSingle',
+    args: safeFromToken.address === '0x0000000000000000000000000000000000000000' ? [{
+      tokenIn: tokens?.find(t => t.symbol === 'WETH')?.address, // Use WETH for ETH swaps
+      tokenOut: safeToToken.address,
+      amountIn: fromValue ? parseUnits(fromValue, safeFromToken.decimals) : 0n,
       amountOutMinimum: amountOutMin,
       recipient: address,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // 20 minutes from now
       sqrtPriceLimitX96: 0n,
     }] : [{
-      tokenIn: fromToken.address,
-      tokenOut: toToken.address === '0x0000000000000000000000000000000000000000' ? tokens.find(t => t.symbol === 'WETH')?.address : toToken.address,
-      amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
+      tokenIn: safeFromToken.address,
+      tokenOut: safeToToken.address === '0x0000000000000000000000000000000000000000' ? tokens?.find(t => t.symbol === 'WETH')?.address : safeToToken.address,
+      amountIn: fromValue ? parseUnits(fromValue, safeFromToken.decimals) : 0n,
       amountOutMinimum: amountOutMin,
       recipient: address,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20), // 20 minutes from now
       sqrtPriceLimitX96: 0n,
     }],
-    value: fromToken.address === '0x0000000000000000000000000000000000000000' && fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n, // ETH value for swap
+    value: safeFromToken.address === '0x0000000000000000000000000000000000000000' && fromValue ? parseUnits(fromValue, safeFromToken.decimals) : 0n, // ETH value for swap
     query: {
-      enabled: walletConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval && fromToken.address && toToken.address,
+      enabled: walletConnected && fromValue && toValue && parseUnits(fromValue, safeFromToken.decimals) > 0n && !needsApproval && safeFromToken.address && safeToToken.address,
     },
   });
 
@@ -363,15 +368,15 @@ const SwapCard = ({
 
   useEffect(() => {
     if (isSwapLoading) {
-      openTxStatusModal('loading', 'Confirming Swap...', `Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`);
+      openTxStatusModal('loading', 'Confirming Swap...', `Swapping ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}.`);
     } else if (isSwapSuccess) {
-      openTxStatusModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}.`, swapTxData?.transactionHash);
+      openTxStatusModal('success', 'Swap Successful!', `Successfully swapped ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}.`, swapTxData?.transactionHash);
       setFromValue('0');
       setToValue('0');
     } else if (isSwapErrorTx) {
       openTxStatusModal('error', 'Swap Failed', `Error during swap: ${swapSimulateError?.shortMessage || swapSimulateError?.message || 'Transaction failed.'}`, swapTxData?.transactionHash);
     }
-  }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, fromToken, toValue, toToken]);
+  }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, safeFromToken, toValue, safeToToken]);
 
   const handleSwap = async () => {
     if (!walletConnected) {
@@ -381,7 +386,7 @@ const SwapCard = ({
     }
 
     if (needsApproval) {
-      toast.error(`Please approve ${fromToken.symbol} first.`);
+      toast.error(`Please approve ${safeFromToken.symbol} first.`);
       return;
     }
 
@@ -415,8 +420,8 @@ const SwapCard = ({
 
   const renderTokenList = (isFrom) => {
     const filteredTokens = (tokens ?? []).filter(token =>
-      token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      token.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      token.symbol?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -437,10 +442,10 @@ const SwapCard = ({
                   className="flex items-center p-3 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors duration-200"
                   onClick={() => handleTokenSelect(token, isFrom)}
                 >
-                  <img src={token.logo} alt={token.symbol} className="w-9 h-9 mr-3 rounded-full" />
+                  <img src={token.logo || ''} alt={token.symbol || ''} className="w-9 h-9 mr-3 rounded-full" />
                   <div className="flex flex-col items-start">
-                    <span className="text-white text-lg font-semibold">{token.symbol}</span>
-                    <span className="text-gray-400 text-sm">{token.name}</span>
+                    <span className="text-white text-lg font-semibold">{token.symbol || ''}</span>
+                    <span className="text-gray-400 text-sm">{token.name || ''}</span>
                     {walletConnected && allTokensBalances[token.address] !== undefined && (
                       <span className="text-gray-400 text-xs">
                         Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
@@ -487,7 +492,7 @@ const SwapCard = ({
         <div className="flex justify-between items-center mb-2">
           <div className="text-xs text-gray-400">Sell</div>
           {walletConnected && fromTokenBalance && (
-            <button onClick={handleMaxClick} className="text-xs text-purple-400 font-semibold">MAX ({parseFloat(formatUnits(fromTokenBalance.value, fromToken.decimals)).toFixed(6)})</button>
+            <button onClick={handleMaxClick} className="text-xs text-purple-400 font-semibold">MAX ({fromTokenBalance && fromTokenBalance.value ? parseFloat(formatUnits(fromTokenBalance.value, safeFromToken.decimals)).toFixed(6) : '0.000000'})</button>
           )}
         </div>
         <div className="flex justify-between items-center">
@@ -501,8 +506,8 @@ const SwapCard = ({
             className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
             onClick={() => setIsFromTokenModalOpen(true)}
           >
-            <img src={fromToken.logo} alt={fromToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
-            {fromToken.symbol}
+            <img src={safeFromToken.logo || ''} alt={safeFromToken.symbol || ''} className="w-7 h-7 mr-1 rounded-full" />
+            {safeFromToken.symbol || ''}
             <ChevronDownIcon className="w-4 h-4" />
           </button>
         </div>
@@ -524,7 +529,7 @@ const SwapCard = ({
         <div className="flex justify-between items-center mb-2">
           <div className="text-xs text-gray-400">Buy</div>
           {walletConnected && toTokenBalance && (
-            <span className="text-xs text-gray-400">Balance: {parseFloat(formatUnits(toTokenBalance.value, toToken.decimals)).toFixed(6)}</span>
+            <span className="text-xs text-gray-400">Balance: {toTokenBalance && toTokenBalance.value ? parseFloat(formatUnits(toTokenBalance.value, safeToToken.decimals)).toFixed(6) : '0.000000'}</span>
           )}
         </div>
         <div className="flex justify-between items-center">
@@ -538,8 +543,8 @@ const SwapCard = ({
             className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
             onClick={() => setIsToTokenModalOpen(true)}
           >
-            {toToken.symbol === 'Select Token' ? 'Select token' : <img src={toToken.logo} alt={toToken.symbol} className="w-7 h-7 mr-1 rounded-full" />}
-            {toToken.symbol === 'Select Token' ? '' : toToken.symbol}
+            {safeToToken.symbol === 'Select Token' ? 'Select token' : <img src={safeToToken.logo || ''} alt={safeToToken.symbol || ''} className="w-7 h-7 mr-1 rounded-full" />}
+            {safeToToken.symbol === 'Select Token' ? '' : safeToToken.symbol}
             <ChevronDownIcon className="w-4 h-4" />
           </button>
         </div>
@@ -564,13 +569,13 @@ const SwapCard = ({
         >
           Connect wallet
         </button>
-      ) : needsApproval && fromToken.address !== '0x0000000000000000000000000000000000000000' ? (
+      ) : needsApproval && safeFromToken.address !== '0x0000000000000000000000000000000000000000' ? (
         <button
           onClick={handleApprove}
           disabled={isApproveLoading || !approveSimulateData?.request}
           className="mt-6 w-full py-3 rounded-xl bg-gray-800 font-semibold text-white hover:bg-gray-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
+          {isApproveLoading ? 'Approving...' : `Approve ${safeFromToken.symbol}`}
         </button>
       ) : (
         <button
