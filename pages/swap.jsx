@@ -93,13 +93,13 @@ export default function SwapPage() {
   // Balances
   const { data: fromTokenBalanceData } = useBalance({
     address,
-    token: safeFromToken.address === ETH_TOKEN.address ? undefined : safeFromToken.address,
-    query: { enabled: isConnected && !!safeFromToken.address, watch: true },
+    token: safeFromToken.symbol === 'ETH' ? undefined : safeFromToken.address,
+    query: { enabled: isConnected, watch: true },
   });
   const { data: toTokenBalanceData } = useBalance({
     address,
-    token: safeToToken.address === ETH_TOKEN.address ? undefined : safeToToken.address,
-    query: { enabled: isConnected && !!safeToToken.address, watch: true },
+    token: safeToToken.symbol === 'ETH' ? undefined : safeToToken.address,
+    query: { enabled: isConnected, watch: true },
   });
 
   // All token balances for dropdown
@@ -384,7 +384,7 @@ export default function SwapPage() {
             <div className="text-xs text-gray-400">Sell</div>
             {isConnected && (
               <span className="text-xs text-gray-400">
-                Balance: {fromTokenBalanceData && fromTokenBalanceData.value ? parseFloat(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals)).toFixed(6) : '0.000000'}
+                Balance: {fromTokenBalanceData?.formatted || '0.0000'}
               </span>
             )}
           </div>
@@ -408,7 +408,7 @@ export default function SwapPage() {
               <ChevronDownIcon className="w-4 h-4" />
             </button>
           </div>
-          <div className="text-sm text-gray-500 mt-1">$0</div>
+          <div className="text-sm text-gray-500 mt-1">$0.00</div>
         </div>
         {/* Arrow Switcher */}
         <div className="w-full flex justify-center -my-3 z-10">
@@ -419,13 +419,19 @@ export default function SwapPage() {
             <ArrowDownIcon className="w-5 h-5 text-white" />
           </button>
         </div>
+        {/* Price per token (from quoter) */}
+        {fromValue && toValue && (
+          <div className="flex justify-center items-center my-2 text-gray-400 text-sm">
+            1 {safeFromToken.symbol} ≈ {(parseFloat(toValue) / parseFloat(fromValue)).toFixed(4)} {safeToToken.symbol}
+          </div>
+        )}
         {/* You Buy Panel */}
         <div className="bg-[#2a2a2a] p-4 rounded-xl mt-2">
           <div className="flex justify-between items-center mb-2">
             <div className="text-xs text-gray-400">Buy</div>
             {isConnected && (
               <span className="text-xs text-gray-400">
-                Balance: {toTokenBalanceData && toTokenBalanceData.value ? parseFloat(formatUnits(toTokenBalanceData.value, safeToToken.decimals)).toFixed(6) : '0.000000'}
+                Balance: {toTokenBalanceData?.formatted || '0.0000'}
               </span>
             )}
           </div>
@@ -449,7 +455,7 @@ export default function SwapPage() {
               <ChevronDownIcon className="w-4 h-4" />
             </button>
           </div>
-          <div className="text-sm text-gray-500 mt-1">$0</div>
+          <div className="text-sm text-gray-500 mt-1">$0.00</div>
         </div>
         {/* Price Impact and Slippage */}
         <div className="flex justify-between items-center text-sm text-gray-400 mt-5">
@@ -458,7 +464,17 @@ export default function SwapPage() {
         </div>
         <div className="flex justify-between items-center text-sm text-gray-400 mt-2">
           <span>Slippage Tolerance:</span>
-          <span className="font-semibold">{slippage}%</span>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={slippage}
+            onChange={e => setSlippage(e.target.value)}
+            className="w-16 bg-gray-700 text-white rounded px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 border border-gray-600"
+            aria-label="Slippage tolerance"
+          />
+          <span className="ml-1">%</span>
         </div>
         {/* Quoter summary */}
         <div className="flex justify-between items-center text-md text-gray-300 mt-4">
