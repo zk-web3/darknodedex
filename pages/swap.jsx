@@ -204,37 +204,37 @@ export default function SwapPage() {
   useEffect(() => { calculatePriceImpact(); }, [calculatePriceImpact]);
 
   // Approval
-  const amountToApproveBigInt = fromValue && fromToken.address !== ETH_TOKEN.address ? parseUnits(fromValue, fromToken.decimals) : 0n;
+  const amountToApproveBigInt = fromValue && safeFromToken.address !== ETH_TOKEN.address ? parseUnits(fromValue, safeFromToken.decimals) : 0n;
   const { data: approveSimulateData, error: approveSimulateError } = useSimulateContract({
-    address: fromToken.address === ETH_TOKEN.address ? undefined : fromToken.address,
+    address: safeFromToken.address === ETH_TOKEN.address ? undefined : safeFromToken.address,
     abi: ERC20_ABI,
     functionName: 'approve',
     args: [UNISWAP_ROUTER_ADDRESS, MaxUint256],
-    query: { enabled: isConnected && amountToApproveBigInt > 0n && fromToken.address !== ETH_TOKEN.address },
+    query: { enabled: isConnected && amountToApproveBigInt > 0n && safeFromToken.address !== ETH_TOKEN.address },
   });
   const { data: approveWriteData, writeContract: writeApprove } = useWriteContract();
   const { isLoading: isApproveLoading, isSuccess: isApproveSuccess, isError: isApproveErrorTx, data: approveTxData } = useWaitForTransactionReceipt({ hash: approveWriteData?.hash });
   useEffect(() => {
     if (isApproveLoading) {
-      setIsTxStatusModalOpen(true); setModalStatus('loading'); setModalTitle('Approving...'); setModalMessage(`Approving ${fromToken.symbol}`);
+      setIsTxStatusModalOpen(true); setModalStatus('loading'); setModalTitle('Approving...'); setModalMessage(`Approving ${safeFromToken.symbol}`);
     } else if (isApproveSuccess) {
-      setIsTxStatusModalOpen(true); setModalStatus('success'); setModalTitle('Approval Successful!'); setModalMessage(`Approved ${fromToken.symbol}`); setModalTxHash(approveTxData?.transactionHash);
+      setIsTxStatusModalOpen(true); setModalStatus('success'); setModalTitle('Approval Successful!'); setModalMessage(`Approved ${safeFromToken.symbol}`); setModalTxHash(approveTxData?.transactionHash);
       checkApproval();
     } else if (isApproveErrorTx) {
-      setIsTxStatusModalOpen(true); setModalStatus('error'); setModalTitle('Approval Failed'); setModalMessage(`Error approving ${fromToken.symbol}`); setModalTxHash(approveTxData?.transactionHash);
+      setIsTxStatusModalOpen(true); setModalStatus('error'); setModalTitle('Approval Failed'); setModalMessage(`Error approving ${safeFromToken.symbol}`); setModalTxHash(approveTxData?.transactionHash);
     }
-  }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, fromToken.symbol]);
+  }, [isApproveLoading, isApproveSuccess, isApproveErrorTx, approveSimulateError, approveTxData, safeFromToken.symbol]);
 
   const checkApproval = useCallback(async () => {
-    if (isConnected && address && publicClient && fromToken && fromValue && fromToken.address !== ETH_TOKEN.address) {
+    if (isConnected && address && publicClient && safeFromToken && fromValue && safeFromToken.address !== ETH_TOKEN.address) {
       try {
         const allowance = await publicClient.readContract({
-          address: fromToken.address,
+          address: safeFromToken.address,
           abi: ERC20_ABI,
           functionName: 'allowance',
           args: [address, UNISWAP_ROUTER_ADDRESS],
         });
-        const amountIn = parseUnits(fromValue || '0', fromToken.decimals);
+        const amountIn = parseUnits(fromValue || '0', safeFromToken.decimals);
         setNeedsApproval(allowance < amountIn);
       } catch (error) {
         setNeedsApproval(true);
@@ -242,42 +242,42 @@ export default function SwapPage() {
     } else {
       setNeedsApproval(false);
     }
-  }, [isConnected, address, publicClient, fromToken, fromValue]);
-  useEffect(() => { checkApproval(); }, [checkApproval, fromValue, fromToken, address]);
+  }, [isConnected, address, publicClient, safeFromToken, fromValue]);
+  useEffect(() => { checkApproval(); }, [checkApproval, fromValue, safeFromToken, address]);
 
   // Swap
-  const amountOutMin = toValue ? parseUnits(toValue, toToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
+  const amountOutMin = toValue ? parseUnits(toValue, safeToToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
   const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
     address: UNISWAP_ROUTER_ADDRESS,
     abi: UNISWAP_ROUTER_ABI,
     functionName: 'exactInputSingle',
     args: [{
-      tokenIn: getQuoteTokenAddress(fromToken),
-      tokenOut: getQuoteTokenAddress(toToken),
+      tokenIn: getQuoteTokenAddress(safeFromToken),
+      tokenOut: getQuoteTokenAddress(safeToToken),
       fee: 3000,
       recipient: address,
       deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
-      amountIn: fromValue ? parseUnits(fromValue, fromToken.decimals) : 0n,
+      amountIn: fromValue ? parseUnits(fromValue, safeFromToken.decimals) : 0n,
       amountOutMinimum: amountOutMin,
       sqrtPriceLimitX96: 0n,
     }],
-    value: fromToken.address === ETH_TOKEN.address ? parseUnits(fromValue || '0', fromToken.decimals) : 0n,
+    value: safeFromToken.address === ETH_TOKEN.address ? parseUnits(fromValue || '0', safeFromToken.decimals) : 0n,
     query: {
-      enabled: isConnected && fromValue && toValue && parseUnits(fromValue, fromToken.decimals) > 0n && !needsApproval && !liquidityWarning,
+      enabled: isConnected && fromValue && toValue && parseUnits(fromValue, safeFromToken.decimals) > 0n && !needsApproval && !liquidityWarning,
     },
   });
   const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
   const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransactionReceipt({ hash: swapWriteData?.hash });
   useEffect(() => {
     if (isSwapLoading) {
-      setIsTxStatusModalOpen(true); setModalStatus('loading'); setModalTitle('Swapping...'); setModalMessage(`Swapping ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}`);
+      setIsTxStatusModalOpen(true); setModalStatus('loading'); setModalTitle('Swapping...'); setModalMessage(`Swapping ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}`);
     } else if (isSwapSuccess) {
-      setIsTxStatusModalOpen(true); setModalStatus('success'); setModalTitle('Swap Successful!'); setModalMessage(`Swapped ${fromValue} ${fromToken.symbol} for ${toValue} ${toToken.symbol}`); setModalTxHash(swapTxData?.transactionHash);
+      setIsTxStatusModalOpen(true); setModalStatus('success'); setModalTitle('Swap Successful!'); setModalMessage(`Swapped ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}`); setModalTxHash(swapTxData?.transactionHash);
       setFromValue(''); setToValue('');
     } else if (isSwapErrorTx) {
       setIsTxStatusModalOpen(true); setModalStatus('error'); setModalTitle('Swap Failed'); setModalMessage(`Error during swap`); setModalTxHash(swapTxData?.transactionHash);
     }
-  }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, fromToken, toValue, toToken]);
+  }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, safeFromToken, toValue, safeToToken]);
 
   // UI Handlers
   const handleFromValueChange = (e) => {
@@ -286,12 +286,12 @@ export default function SwapPage() {
   };
   const handleMaxClick = () => {
     if (isConnected && fromTokenBalanceData && fromTokenBalanceData.value) {
-      setFromValue(formatUnits(fromTokenBalanceData.value, fromToken.decimals));
+      setFromValue(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals));
     }
   };
   const handleSwapTokens = () => {
-    setFromToken(toToken);
-    setToToken(fromToken);
+    setFromToken(safeToToken);
+    setToToken(safeFromToken);
     setFromValue(toValue);
     setToValue(fromValue);
     setSearchQuery('');
@@ -303,7 +303,7 @@ export default function SwapPage() {
   };
   const handleSwap = async () => {
     if (!isConnected) { toast.error('Please connect your wallet to swap.'); handleConnectWallet(); return; }
-    if (needsApproval) { toast.error(`Please approve ${fromToken.symbol} first.`); return; }
+    if (needsApproval) { toast.error(`Please approve ${safeFromToken.symbol} first.`); return; }
     if (!swapSimulateData?.request) { toast.error('Unable to prepare swap transaction.'); return; }
     try { writeSwap(swapSimulateData.request); } catch (error) { toast.error('Swap transaction failed.'); }
   };
@@ -378,7 +378,7 @@ export default function SwapPage() {
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs text-gray-400">Sell</div>
               {isConnected && fromTokenBalanceData && (
-                <button onClick={handleMaxClick} className="text-xs text-purple-400 font-semibold">MAX ({fromTokenBalanceData && fromTokenBalanceData.value ? parseFloat(formatUnits(fromTokenBalanceData.value, fromToken.decimals)).toFixed(6) : '0.000000'})</button>
+                <button onClick={handleMaxClick} className="text-xs text-purple-400 font-semibold">MAX ({fromTokenBalanceData && fromTokenBalanceData.value ? parseFloat(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals)).toFixed(6) : '0.000000'})</button>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -392,8 +392,8 @@ export default function SwapPage() {
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
                 onClick={() => setIsFromTokenModalOpen(true)}
               >
-                <img src={fromToken.logo} alt={fromToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
-                {fromToken.symbol}
+                <img src={safeFromToken.logo} alt={safeFromToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
+                {safeFromToken.symbol}
                 <ChevronDownIcon className="w-4 h-4" />
               </button>
             </div>
@@ -413,7 +413,7 @@ export default function SwapPage() {
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs text-gray-400">Buy</div>
               {isConnected && toTokenBalanceData && (
-                <span className="text-xs text-gray-400">Balance: {toTokenBalanceData && toTokenBalanceData.value ? parseFloat(formatUnits(toTokenBalanceData.value, toToken.decimals)).toFixed(6) : '0.000000'}</span>
+                <span className="text-xs text-gray-400">Balance: {toTokenBalanceData && toTokenBalanceData.value ? parseFloat(formatUnits(toTokenBalanceData.value, safeToToken.decimals)).toFixed(6) : '0.000000'}</span>
               )}
             </div>
             <div className="flex justify-between items-center">
@@ -427,8 +427,8 @@ export default function SwapPage() {
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
                 onClick={() => setIsToTokenModalOpen(true)}
               >
-                <img src={toToken.logo} alt={toToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
-                {toToken.symbol}
+                <img src={safeToToken.logo} alt={safeToToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
+                {safeToToken.symbol}
                 <ChevronDownIcon className="w-4 h-4" />
               </button>
             </div>
@@ -446,11 +446,11 @@ export default function SwapPage() {
           {/* Quoter summary */}
           <div className="flex justify-between items-center text-md text-gray-300 mt-4">
             <span>You pay:</span>
-            <span className="font-semibold">{fromValue || '0'} {fromToken.symbol}</span>
+            <span className="font-semibold">{fromValue || '0'} {safeFromToken.symbol}</span>
           </div>
           <div className="flex justify-between items-center text-md text-gray-300 mt-1">
             <span>You get:</span>
-            <span className="font-semibold">{toValue || '0'} {toToken.symbol}</span>
+            <span className="font-semibold">{toValue || '0'} {safeToToken.symbol}</span>
           </div>
           {liquidityWarning && (
             <div className="mt-4 text-center text-red-400 font-semibold">{liquidityWarning}</div>
@@ -469,7 +469,7 @@ export default function SwapPage() {
               disabled={isApproveLoading || !approveSimulateData?.request}
               className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-700 font-semibold text-white hover:from-yellow-600 hover:to-yellow-800 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
             >
-              {isApproveLoading ? 'Approving...' : `Approve ${fromToken.symbol}`}
+              {isApproveLoading ? 'Approving...' : `Approve ${safeFromToken.symbol}`}
             </button>
           ) : (
             <button
