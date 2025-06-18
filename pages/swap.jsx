@@ -9,7 +9,7 @@ import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
-import { TOKENS, ERC20_ABI, WETH_TOKEN } from '../src/utils/tokens';
+import { TOKENS, ERC20_ABI, WETH_TOKEN, USDC_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 
 function classNames(...classes) {
@@ -21,10 +21,10 @@ const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Monad explorer
 
 // Use WETH as the default ETH token for Sepolia
 const ETH_TOKEN = WETH_TOKEN;
-const ALL_TOKENS = [ETH_TOKEN, ...TOKENS.filter(t => t.symbol !== 'WETH')];
+const ALL_TOKENS = [ETH_TOKEN, USDC_TOKEN];
 
-const initialFromToken = ETH_TOKEN || TOKENS[0];
-const initialToToken = TOKENS[1] || ETH_TOKEN;
+const initialFromToken = ETH_TOKEN;
+const initialToToken = USDC_TOKEN;
 
 export default function SwapPage() {
   // Wallet
