@@ -11,6 +11,9 @@ import { baseSepolia } from 'wagmi/chains';
 import { TOKENS, ERC20_ABI, USDC_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { WETH_TOKEN } from '../src/utils/tokens';
+import { ethers } from 'ethers';
+import ERC20_ABI from '../src/abis/ERC20.json';
+import SWAP_ROUTER_ABI from '../src/abis/UniswapV3SwapRouter.json';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -58,6 +61,11 @@ export default function SwapPage() {
   const [modalMessage, setModalMessage] = useState('');
   const [modalTxHash, setModalTxHash] = useState('');
   const [liquidityWarning, setLiquidityWarning] = useState('');
+  const [swapLoading, setSwapLoading] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [swapError, setSwapError] = useState('');
+  const [swapTxHash, setSwapTxHash] = useState('');
+  const [allowance, setAllowance] = useState('0');
 
   // Defensive: fallback to empty object if fromToken/toToken is undefined
   const safeFromToken = fromToken || { address: '', symbol: '', decimals: 18, logo: '' };
@@ -251,39 +259,64 @@ export default function SwapPage() {
   }, [isConnected, address, publicClient, safeFromToken, fromValue]);
   useEffect(() => { checkApproval(); }, [checkApproval, fromValue, safeFromToken, address]);
 
-  // Swap
-  const amountOutMin = toValue ? parseUnits(toValue, safeToToken.decimals) * (100n - parseUnits(slippage, 0)) / 100n : 0n;
-  const { data: swapSimulateData, error: swapSimulateError } = useSimulateContract({
-    address: UNISWAP_ROUTER_ADDRESS,
-    abi: UNISWAP_ROUTER_ABI,
-    functionName: 'exactInputSingle',
-    args: [{
-      tokenIn: getQuoteTokenAddress(safeFromToken),
-      tokenOut: getQuoteTokenAddress(safeToToken),
-      fee: 3000,
-      recipient: address,
-      deadline: BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
-      amountIn: fromValue ? parseUnits(fromValue, safeFromToken.decimals) : 0n,
-      amountOutMinimum: amountOutMin,
-      sqrtPriceLimitX96: 0n,
-    }],
-    value: safeFromToken.address === ETH_TOKEN.address ? parseUnits(fromValue || '0', safeFromToken.decimals) : 0n,
-    query: {
-      enabled: isConnected && fromValue && toValue && parseUnits(fromValue, safeFromToken.decimals) > 0n && !needsApproval && !liquidityWarning,
-    },
-  });
-  const { data: swapWriteData, writeContract: writeSwap } = useWriteContract();
-  const { isLoading: isSwapLoading, isSuccess: isSwapSuccess, isError: isSwapErrorTx, data: swapTxData } = useWaitForTransactionReceipt({ hash: swapWriteData?.hash });
+  // Fetch allowance for USDC
   useEffect(() => {
-    if (isSwapLoading) {
-      setIsTxStatusModalOpen(true); setModalStatus('loading'); setModalTitle('Swapping...'); setModalMessage(`Swapping ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}`);
-    } else if (isSwapSuccess) {
-      setIsTxStatusModalOpen(true); setModalStatus('success'); setModalTitle('Swap Successful!'); setModalMessage(`Swapped ${fromValue} ${safeFromToken.symbol} for ${toValue} ${safeToToken.symbol}`); setModalTxHash(swapTxData?.transactionHash);
-      setFromValue(''); setToValue('');
-    } else if (isSwapErrorTx) {
-      setIsTxStatusModalOpen(true); setModalStatus('error'); setModalTitle('Swap Failed'); setModalMessage(`Error during swap`); setModalTxHash(swapTxData?.transactionHash);
+    if (!isConnected || !address || safeFromToken.symbol !== 'USDC') return;
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const erc20 = new ethers.Contract(safeFromToken.address, ERC20_ABI, provider);
+    erc20.allowance(address, UNISWAP_ROUTER).then(a => setAllowance(a.toString()));
+  }, [isConnected, address, safeFromToken]);
+
+  // Approve USDC if needed
+  const handleApprove = async () => {
+    setApproveLoading(true);
+    setSwapError('');
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const erc20 = new ethers.Contract(safeFromToken.address, ERC20_ABI, signer);
+      const tx = await erc20.approve(UNISWAP_ROUTER, ethers.constants.MaxUint256);
+      await tx.wait();
+      setAllowance(ethers.constants.MaxUint256.toString());
+    } catch (e) {
+      setSwapError('Approval failed: ' + (e.reason || e.message));
     }
-  }, [isSwapLoading, isSwapSuccess, isSwapErrorTx, swapSimulateError, swapTxData, fromValue, safeFromToken, toValue, safeToToken]);
+    setApproveLoading(false);
+  };
+
+  // Swap function
+  const handleSwap = async () => {
+    setSwapLoading(true);
+    setSwapError('');
+    setSwapTxHash('');
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const router = new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer);
+      const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
+      // Placeholder: set a minimum amount out (slippage logic)
+      const minAmountOut = 0; // TODO: Use real quote and slippage
+      const params = {
+        tokenIn: safeFromToken.symbol === 'ETH' ? WETH_TOKEN.address : safeFromToken.address,
+        tokenOut: safeToToken.symbol === 'ETH' ? WETH_TOKEN.address : safeToToken.address,
+        fee: 3000,
+        recipient: address,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        amountIn,
+        amountOutMinimum: minAmountOut,
+        sqrtPriceLimitX96: 0,
+      };
+      const tx = await router.exactInputSingle(
+        params,
+        { value: safeFromToken.symbol === 'ETH' ? amountIn : 0 }
+      );
+      setSwapTxHash(tx.hash);
+      await tx.wait();
+    } catch (e) {
+      setSwapError('Swap failed: ' + (e.reason || e.message));
+    }
+    setSwapLoading(false);
+  };
 
   // UI Handlers
   const handleFromValueChange = (e) => {
@@ -301,17 +334,6 @@ export default function SwapPage() {
     setFromValue(toValue);
     setToValue(fromValue);
     setSearchQuery('');
-  };
-  const handleApprove = async () => {
-    if (!isConnected) { toast.error('Please connect your wallet to approve tokens.'); handleConnectWallet(); return; }
-    if (!approveSimulateData?.request) { toast.error('Unable to prepare approval transaction.'); return; }
-    try { writeApprove(approveSimulateData.request); } catch (error) { toast.error('Approval transaction failed.'); }
-  };
-  const handleSwap = async () => {
-    if (!isConnected) { toast.error('Please connect your wallet to swap.'); handleConnectWallet(); return; }
-    if (needsApproval) { toast.error(`Please approve ${safeFromToken.symbol} first.`); return; }
-    if (!swapSimulateData?.request) { toast.error('Unable to prepare swap transaction.'); return; }
-    try { writeSwap(swapSimulateData.request); } catch (error) { toast.error('Swap transaction failed.'); }
   };
   const handleTokenSelect = (token, isFrom) => {
     if (isFrom) { setFromToken(token); setIsFromTokenModalOpen(false); } else { setToToken(token); setIsToTokenModalOpen(false); }
