@@ -315,8 +315,8 @@ export default function SwapPage() {
   // Token List Modal
   const renderTokenList = (isFrom) => {
     const filteredTokens = ALL_TOKENS.filter(token =>
-      token.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      token.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      (token.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (token.symbol || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     return (
       <>
@@ -336,10 +336,10 @@ export default function SwapPage() {
                   className="flex items-center p-3 rounded-lg bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors duration-200"
                   onClick={() => handleTokenSelect(token, isFrom)}
                 >
-                  <img src={token.logo} alt={token.symbol} className="w-9 h-9 mr-3 rounded-full" />
+                  <img src={token.logo || ''} alt={token.symbol || ''} className="w-9 h-9 mr-3 rounded-full" />
                   <div className="flex flex-col items-start">
-                    <span className="text-white text-lg font-semibold">{token.symbol}</span>
-                    <span className="text-gray-400 text-sm">{token.name}</span>
+                    <span className="text-white text-lg font-semibold">{token.symbol || ''}</span>
+                    <span className="text-gray-400 text-sm">{token.name || ''}</span>
                     {isConnected && allTokensBalances[token.address] !== undefined && (
                       <span className="text-gray-400 text-xs">
                         Balance: {parseFloat(allTokensBalances[token.address]).toFixed(4)}
@@ -392,8 +392,8 @@ export default function SwapPage() {
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
                 onClick={() => setIsFromTokenModalOpen(true)}
               >
-                <img src={safeFromToken.logo} alt={safeFromToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
-                {safeFromToken.symbol}
+                <img src={safeFromToken.logo || ''} alt={safeFromToken.symbol || ''} className="w-7 h-7 mr-1 rounded-full" />
+                {safeFromToken.symbol || ''}
                 <ChevronDownIcon className="w-4 h-4" />
               </button>
             </div>
@@ -427,8 +427,8 @@ export default function SwapPage() {
                 className="text-md flex items-center gap-1 bg-[#3b3b3b] px-3 py-2 rounded-lg text-white font-semibold"
                 onClick={() => setIsToTokenModalOpen(true)}
               >
-                <img src={safeToToken.logo} alt={safeToToken.symbol} className="w-7 h-7 mr-1 rounded-full" />
-                {safeToToken.symbol}
+                <img src={safeToToken.logo || ''} alt={safeToToken.symbol || ''} className="w-7 h-7 mr-1 rounded-full" />
+                {safeToToken.symbol || ''}
                 <ChevronDownIcon className="w-4 h-4" />
               </button>
             </div>
@@ -446,11 +446,11 @@ export default function SwapPage() {
           {/* Quoter summary */}
           <div className="flex justify-between items-center text-md text-gray-300 mt-4">
             <span>You pay:</span>
-            <span className="font-semibold">{fromValue || '0'} {safeFromToken.symbol}</span>
+            <span className="font-semibold">{fromValue || '0'} {safeFromToken.symbol || ''}</span>
           </div>
           <div className="flex justify-between items-center text-md text-gray-300 mt-1">
             <span>You get:</span>
-            <span className="font-semibold">{toValue || '0'} {safeToToken.symbol}</span>
+            <span className="font-semibold">{toValue || '0'} {safeToToken.symbol || ''}</span>
           </div>
           {liquidityWarning && (
             <div className="mt-4 text-center text-red-400 font-semibold">{liquidityWarning}</div>
@@ -469,7 +469,7 @@ export default function SwapPage() {
               disabled={isApproveLoading || !approveSimulateData?.request}
               className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-yellow-700 font-semibold text-white hover:from-yellow-600 hover:to-yellow-800 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
             >
-              {isApproveLoading ? 'Approving...' : `Approve ${safeFromToken.symbol}`}
+              {isApproveLoading ? 'Approving...' : `Approve ${safeFromToken.symbol || ''}`}
             </button>
           ) : (
             <button
