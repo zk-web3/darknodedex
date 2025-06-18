@@ -8,7 +8,7 @@ import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { baseSepolia } from 'wagmi/chains';
-import { TOKENS, ERC20_ABI, USDC_TOKEN } from '../src/utils/tokens';
+import { TOKENS, USDC_TOKEN } from '../src/utils/tokens';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { WETH_TOKEN } from '../src/utils/tokens';
 import { ethers } from 'ethers';
