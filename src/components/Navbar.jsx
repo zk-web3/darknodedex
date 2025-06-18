@@ -34,7 +34,7 @@ export default function Navbar({ isConnected, address, handleConnectWallet, chai
   }
 
   return (
-    <nav className="bg-dark-secondary bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg py-4 px-8 flex items-center justify-between z-20 sticky top-0 h-20 border-b border-neon-purple/50" role="navigation" aria-label="Main Navigation">
+    <nav className="bg-dark-secondary bg-opacity-80 backdrop-filter backdrop-blur-lg shadow-lg py-4 px-8 flex items-center justify-between z-50 pointer-events-auto sticky top-0 h-20 border-b border-neon-purple/50" role="navigation" aria-label="Main Navigation">
       <div className="flex items-center">
         <Link href="/" passHref legacyBehavior>
           <a className="text-3xl font-bold text-neon-pink cursor-pointer transition-colors duration-300 hover:text-neon-blue mr-8 focus:outline-none focus:ring-2 focus:ring-neon-blue active:scale-95" tabIndex={0} aria-label="Go to homepage" role="link">
