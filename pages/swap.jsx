@@ -12,7 +12,7 @@ import { TOKENS, USDC_TOKEN } from '../src/utils/tokens';
 import ERC20_ABI from '../src/abis/ERC20.json';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { WETH_TOKEN } from '../src/utils/tokens';
-import { ethers } from 'ethers';
+import { Web3Provider } from 'ethers/providers';
 import SWAP_ROUTER_ABI from '../src/abis/UniswapV3SwapRouter.json';
 import QUOTER_ABI from '../src/abis/UniswapV3Quoter.json';
 
@@ -29,7 +29,7 @@ const ETH_TOKEN = {
   symbol: 'ETH',
   address: undefined, // Native ETH has no address
   decimals: 18,
-  logo: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+  logo: '/ethereum-eth-logo.png',
 };
 const ALL_TOKENS = [ETH_TOKEN, USDC_TOKEN];
 
@@ -276,8 +276,8 @@ export default function SwapPage() {
   // Fetch allowance for USDC
   useEffect(() => {
     if (!isConnected || !address || safeFromToken.symbol !== 'USDC') return;
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const erc20 = new ethers.Contract(safeFromToken.address, ERC20_ABI, provider);
+    const provider = new Web3Provider(window.ethereum);
+    const erc20 = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(safeFromToken.address, ERC20_ABI, provider));
     erc20.allowance(address, UNISWAP_ROUTER).then(a => setAllowance(a.toString()));
   }, [isConnected, address, safeFromToken]);
 
@@ -286,8 +286,8 @@ export default function SwapPage() {
     async function fetchQuote() {
       if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setEstimatedOut('');
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const quoter = new ethers.Contract(UNISWAP_QUOTER, QUOTER_ABI, provider);
+        const provider = new Web3Provider(window.ethereum);
+        const quoter = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_QUOTER, QUOTER_ABI, provider));
         const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
         const quoted = await quoter.quoteExactInputSingle(
           safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
@@ -311,9 +311,9 @@ export default function SwapPage() {
     async function estimateGas() {
       if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setGasEstimate('');
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const router = new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer);
+        const provider = new Web3Provider(window.ethereum);
+        const signer = new Web3Provider(window.ethereum).getSigner();
+        const router = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer));
         const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
         const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
         const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
@@ -344,9 +344,9 @@ export default function SwapPage() {
     setApproveLoading(true);
     setSwapError('');
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const erc20 = new ethers.Contract(safeFromToken.address, ERC20_ABI, signer);
+      const provider = new Web3Provider(window.ethereum);
+      const signer = new Web3Provider(window.ethereum).getSigner();
+      const erc20 = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(safeFromToken.address, ERC20_ABI, signer));
       const tx = await erc20.approve(UNISWAP_ROUTER, ethers.constants.MaxUint256);
       await tx.wait();
       setAllowance(ethers.constants.MaxUint256.toString());
@@ -362,9 +362,9 @@ export default function SwapPage() {
     setSwapError('');
     setSwapTxHash('');
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const router = new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer);
+      const provider = new Web3Provider(window.ethereum);
+      const signer = new Web3Provider(window.ethereum).getSigner();
+      const router = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer));
       const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
       const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
       const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
