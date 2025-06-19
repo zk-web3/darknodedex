@@ -613,7 +613,6 @@ export default function SwapPage() {
               swapLoading ||
               !isConnected ||
               !address ||
-              !swapSimulateData?.request ||
               parseFloat(fromValue) === 0 ||
               parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0') ||
               !isValidPair(safeFromToken, safeToToken)
