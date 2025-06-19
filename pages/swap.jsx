@@ -610,7 +610,7 @@ export default function SwapPage() {
           <button
             onClick={handleSwap}
             disabled={
-              isSwapLoading ||
+              swapLoading ||
               !isConnected ||
               !address ||
               !swapSimulateData?.request ||
@@ -622,7 +622,7 @@ export default function SwapPage() {
             aria-label="Swap ETH to USDC"
             role="button"
           >
-            {isSwapLoading ? 'Swapping...' : 'Swap'}
+            {swapLoading ? 'Swapping...' : 'Swap'}
           </button>
         )}
         {swapError && (
