@@ -99,23 +99,29 @@ export default function SwapPage() {
     } else {
       try {
         await connect({ connector: injected() });
-        toast.success('Wallet Connected!');
       } catch (connectError) {
         toast.error(`Failed to connect wallet: ${connectError.message}`);
       }
     }
   };
 
+  // Show 'Wallet Connected!' toast only when isConnected and address are available
+  useEffect(() => {
+    if (isConnected && address) {
+      toast.success('Wallet Connected!');
+    }
+  }, [isConnected, address]);
+
   // Balances
-  const { data: fromTokenBalanceData } = useBalance({
-    address,
+  const { data: fromTokenBalanceData, isLoading: isFromTokenBalanceLoading } = useBalance({
+    address: isConnected && address ? address : undefined,
     token: safeFromToken.symbol === 'ETH' ? undefined : safeFromToken.address,
-    query: { enabled: isConnected, watch: true },
+    query: { enabled: isConnected && !!address, watch: true },
   });
-  const { data: toTokenBalanceData } = useBalance({
-    address,
+  const { data: toTokenBalanceData, isLoading: isToTokenBalanceLoading } = useBalance({
+    address: isConnected && address ? address : undefined,
     token: safeToToken.symbol === 'ETH' ? undefined : safeToToken.address,
-    query: { enabled: isConnected, watch: true },
+    query: { enabled: isConnected && !!address, watch: true },
   });
 
   // All token balances for dropdown
@@ -125,10 +131,10 @@ export default function SwapPage() {
     functionName: 'balanceOf',
     args: [address],
   }));
-  const { data: erc20BalancesData } = useReadContracts({
+  const { data: erc20BalancesData, isLoading: isErc20BalancesLoading } = useReadContracts({
     contracts: erc20TokenContracts,
     query: {
-      enabled: isConnected,
+      enabled: isConnected && !!address,
       watch: true,
       select: (data) => {
         const balancesMap = {};
@@ -472,7 +478,7 @@ export default function SwapPage() {
             <div className="text-xs text-gray-400">Sell</div>
             {isConnected && (
               <span className="text-xs text-gray-400">
-                Balance: {fromTokenBalanceData?.formatted || '0.0000'}
+                Balance: {isFromTokenBalanceLoading ? 'Loading...' : fromTokenBalanceData?.formatted || '0.0000'}
               </span>
             )}
           </div>
@@ -527,7 +533,7 @@ export default function SwapPage() {
             <div className="text-xs text-gray-400">Buy</div>
             {isConnected && (
               <span className="text-xs text-gray-400">
-                Balance: {toTokenBalanceData?.formatted || '0.0000'}
+                Balance: {isToTokenBalanceLoading ? 'Loading...' : toTokenBalanceData?.formatted || '0.0000'}
               </span>
             )}
           </div>
@@ -603,13 +609,24 @@ export default function SwapPage() {
         ) : (
           <button
             onClick={handleSwap}
-            disabled={isSwapLoading || !swapSimulateData?.request || parseFloat(fromValue) === 0 || parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0') || !isValidPair(safeFromToken, safeToToken)}
+            disabled={
+              isSwapLoading ||
+              !isConnected ||
+              !address ||
+              !swapSimulateData?.request ||
+              parseFloat(fromValue) === 0 ||
+              parseFloat(fromValue) > parseFloat(fromTokenBalanceData?.formatted || '0') ||
+              !isValidPair(safeFromToken, safeToToken)
+            }
             className="mt-6 w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-500 font-semibold text-white hover:from-green-600 hover:to-blue-600 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-lg shadow-lg"
             aria-label="Swap ETH to USDC"
             role="button"
           >
             {isSwapLoading ? 'Swapping...' : 'Swap'}
           </button>
+        )}
+        {swapError && (
+          <div className="text-red-500 text-sm mt-2">{swapError}</div>
         )}
       </div>
       {/* Token Selection Modals */}
