@@ -157,16 +157,25 @@ export default function SwapPage() {
   // Update getQuoteTokenAddress to handle native ETH (return WETH address for Uniswap contract calls)
   const getQuoteTokenAddress = (token) => token && token.symbol === 'ETH' ? WETH_ADDRESS : token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
-    if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) {
+    if (!publicClient || !currentFromToken || !currentToToken || amountInBigInt === 0n) {
       console.log('Invalid input for quote:', { amountInBigInt, currentFromToken, currentToToken });
+      return 0n;
+    }
+    
+    // Handle ETH token which has no address
+    const tokenInAddress = getQuoteTokenAddress(currentFromToken);
+    const tokenOutAddress = getQuoteTokenAddress(currentToToken);
+    
+    if (!tokenInAddress || !tokenOutAddress) {
+      console.error('Invalid token addresses:', { tokenInAddress, tokenOutAddress });
       return 0n;
     }
     try {
       console.log(`Getting quote for ${amountInBigInt.toString()} from ${currentFromToken.symbol} to ${currentToToken.symbol}`);
       
       const params = {
-        tokenIn: getQuoteTokenAddress(currentFromToken),
-        tokenOut: getQuoteTokenAddress(currentToToken),
+        tokenIn: tokenInAddress,
+        tokenOut: tokenOutAddress,
         amountIn: amountInBigInt,
         fee: 3000,
         sqrtPriceLimitX96: 0n,
@@ -223,28 +232,48 @@ export default function SwapPage() {
   useEffect(() => {
     const fetchQuote = async () => {
       setLiquidityWarning('');
-      if (fromValue && safeFromToken && safeToToken && publicClient && fromValue !== '0' && fromValue !== '' && safeFromToken.address && safeToToken.address) {
-        try {
-          const amountInBigInt = parseUnits(fromValue, safeFromToken.decimals);
-          if (amountInBigInt > 0n) {
-            const quotedAmountOut = await getQuote(amountInBigInt, safeFromToken, safeToToken);
-            setToValue(formatUnits(quotedAmountOut, safeToToken.decimals));
+      setSwapError('');
+      
+      // Clear the to value if any required field is missing
+      if (!fromValue || !safeFromToken || !safeToToken || !publicClient || fromValue === '0' || fromValue === '') {
+        setToValue('');
+        return;
+      }
+      
+      try {
+        const amountInBigInt = parseUnits(fromValue, safeFromToken.decimals);
+        if (amountInBigInt > 0n) {
+          console.log('Fetching quote for', fromValue, safeFromToken.symbol, 'to', safeToToken.symbol);
+          
+          const quotedAmountOut = await getQuote(amountInBigInt, safeFromToken, safeToToken);
+          
+          if (quotedAmountOut > 0n) {
+            const formattedAmount = formatUnits(quotedAmountOut, safeToToken.decimals);
+            console.log('Quote result:', formattedAmount, safeToToken.symbol);
+            setToValue(formattedAmount);
+            
             // Check liquidity for a small amount
             const testAmount = parseUnits('0.01', safeFromToken.decimals);
             const testQuote = await getQuote(testAmount, safeFromToken, safeToToken);
             if (testQuote === 0n) {
               setLiquidityWarning('No liquidity for this pair.');
+            } else {
+              setLiquidityWarning('');
             }
           } else {
             setToValue('');
+            setLiquidityWarning('No liquidity for this pair.');
           }
-        } catch (error) {
+        } else {
           setToValue('');
         }
-      } else {
+      } catch (error) {
+        console.error('Error fetching quote:', error);
         setToValue('');
+        setSwapError(`Error fetching quote: ${error.message || 'Unknown error'}`);
       }
     };
+    
     const debounceFetch = setTimeout(fetchQuote, 300);
     return () => clearTimeout(debounceFetch);
   }, [fromValue, safeFromToken, safeToToken, publicClient, getQuote]);
