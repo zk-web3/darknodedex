@@ -15,7 +15,7 @@ export const ERC20_ABI = [
 export const WETH_TOKEN = {
   name: 'Wrapped Ether',
   symbol: 'WETH',
-  address: '0x4200000000000000000000000000000000000006',
+  address: '0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14', // Sepolia WETH address
   decimals: 18,
   logo: 'https://assets.coingecko.com/coins/images/2518/small/weth.png?1628852295',
 };
@@ -23,7 +23,7 @@ export const WETH_TOKEN = {
 export const USDC_TOKEN = {
   name: 'USD Coin',
   symbol: 'USDC',
-  address: '0x65aFADD39029741B3b8f0756952C74678c9cEC93',
+  address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', // Sepolia USDC address
   decimals: 6,
   logo: 'https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png?1547042389',
 };
@@ -45,4 +45,4 @@ export const TOKENS = [
 export const TOKENS_BY_ADDRESS = TOKENS.reduce((acc, token) => {
   acc[token.address.toLowerCase()] = token;
   return acc;
-}, {}); 
+}, {});

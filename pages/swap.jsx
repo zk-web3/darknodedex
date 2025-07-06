@@ -12,7 +12,7 @@ import { TOKENS, USDC_TOKEN } from '../src/utils/tokens';
 import ERC20_ABI from '../src/abis/ERC20.json';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
 import { WETH_TOKEN } from '../src/utils/tokens';
-import { Web3Provider } from 'ethers/providers';
+import { ethers } from 'ethers';
 import SWAP_ROUTER_ABI from '../src/abis/UniswapV3SwapRouter.json';
 import QUOTER_ABI from '../src/abis/UniswapV3Quoter.json';
 
@@ -277,8 +277,8 @@ export default function SwapPage() {
   // Fetch allowance for USDC
   useEffect(() => {
     if (!isConnected || !address || safeFromToken.symbol !== 'USDC') return;
-    const provider = new Web3Provider(window.ethereum);
-    const erc20 = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(safeFromToken.address, ERC20_ABI, provider));
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const erc20 = new ethers.BrowserProvider(window.ethereum).getSigner().connect(new ethers.Contract(safeFromToken.address, ERC20_ABI, provider));
     erc20.allowance(address, UNISWAP_ROUTER).then(a => setAllowance(a.toString()));
   }, [isConnected, address, safeFromToken]);
 
@@ -287,19 +287,28 @@ export default function SwapPage() {
     async function fetchQuote() {
       if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setEstimatedOut('');
       try {
-        const provider = new Web3Provider(window.ethereum);
-        const quoter = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_QUOTER, QUOTER_ABI, provider));
-        const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
-        const quoted = await quoter.quoteExactInputSingle(
-          safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
-          safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
-          3000,
-          amountIn,
-          0
-        );
-        setEstimatedOut(ethers.utils.formatUnits(quoted, safeToToken.decimals));
-        setSlippageWarning(parseFloat(fromValue) > 0 && parseFloat(quoted) === 0 ? 'No liquidity for this pair.' : '');
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const quoter = new ethers.Contract(UNISWAP_QUOTER_ADDRESS, QUOTER_ABI, signer);
+        const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
+        
+        // Create params object according to the ABI structure
+        const params = {
+          tokenIn: safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
+          tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
+          fee: 3000,
+          amountIn: amountIn,
+          sqrtPriceLimitX96: 0
+        };
+        
+        const quoted = await quoter.quoteExactInputSingle(params);
+        // Handle both array return and single value return
+        const amountOut = Array.isArray(quoted) ? quoted[0] : quoted;
+        
+        setEstimatedOut(ethers.formatUnits(amountOut, safeToToken.decimals));
+        setSlippageWarning(parseFloat(fromValue) > 0 && parseFloat(amountOut) === 0 ? 'No liquidity for this pair.' : '');
       } catch (e) {
+        console.error('Quote error:', e);
         setEstimatedOut('');
         setSlippageWarning('No liquidity or error fetching quote.');
       }
@@ -312,12 +321,18 @@ export default function SwapPage() {
     async function estimateGas() {
       if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setGasEstimate('');
       try {
-        const provider = new Web3Provider(window.ethereum);
-        const signer = new Web3Provider(window.ethereum).getSigner();
-        const router = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer));
-        const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
-        const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
-        const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, signer);
+        const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
+        const quoted = estimatedOut ? ethers.parseUnits(estimatedOut, safeToToken.decimals) : 0n;
+        
+        // Calculate minimum amount out based on slippage
+        const slippageBps = Math.floor(parseFloat(slippage) * 100);
+        const minAmountOut = quoted > 0n ? 
+          quoted * BigInt(10000 - slippageBps) / BigInt(10000) : 
+          0n;
+        
         const params = {
           tokenIn: safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
           tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
@@ -328,31 +343,56 @@ export default function SwapPage() {
           amountOutMinimum: minAmountOut,
           sqrtPriceLimitX96: 0,
         };
+        
         const gas = await router.estimateGas.exactInputSingle(
           params,
-          { value: safeFromToken.symbol === 'ETH' ? amountIn : 0 }
+          { value: safeFromToken.symbol === 'ETH' ? amountIn : 0n }
         );
         setGasEstimate(gas.toString());
       } catch (e) {
+        console.error('Gas estimation error:', e);
         setGasEstimate('');
       }
     }
     estimateGas();
-  }, [fromValue, safeFromToken, safeToToken, isConnected, estimatedOut, slippage]);
+  }, [fromValue, safeFromToken, safeToToken, isConnected, estimatedOut, slippage, address]);
 
   // Approve USDC if needed
   const handleApprove = async () => {
     setApproveLoading(true);
     setSwapError('');
     try {
-      const provider = new Web3Provider(window.ethereum);
-      const signer = new Web3Provider(window.ethereum).getSigner();
-      const erc20 = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(safeFromToken.address, ERC20_ABI, signer));
-      const tx = await erc20.approve(UNISWAP_ROUTER, ethers.constants.MaxUint256);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const erc20 = new ethers.Contract(safeFromToken.address, ERC20_ABI, signer);
+      
+      // Set modal for approval pending
+      setIsTxStatusModalOpen(true);
+      setModalStatus('loading');
+      setModalTitle('Approving...');
+      setModalMessage(`Approving ${safeFromToken.symbol}`);
+      
+      const tx = await erc20.approve(UNISWAP_ROUTER_ADDRESS, ethers.MaxUint256);
+      setModalTxHash(tx.hash);
+      
       await tx.wait();
-      setAllowance(ethers.constants.MaxUint256.toString());
+      setAllowance(ethers.MaxUint256.toString());
+      
+      // Update modal for approval success
+      setModalStatus('success');
+      setModalTitle('Approval Successful!');
+      setModalMessage(`Approved ${safeFromToken.symbol}`);
+      
+      // Refresh approval status
+      checkApproval();
     } catch (e) {
+      console.error('Approval error:', e);
       setSwapError('Approval failed: ' + (e.reason || e.message));
+      
+      // Update modal for approval failure
+      setModalStatus('error');
+      setModalTitle('Approval Failed');
+      setModalMessage(`Error approving ${safeFromToken.symbol}: ${e.reason || e.message}`);
     }
     setApproveLoading(false);
   };
@@ -363,12 +403,18 @@ export default function SwapPage() {
     setSwapError('');
     setSwapTxHash('');
     try {
-      const provider = new Web3Provider(window.ethereum);
-      const signer = new Web3Provider(window.ethereum).getSigner();
-      const router = new Web3Provider(window.ethereum).getSigner().connect(new ethers.Contract(UNISWAP_ROUTER, SWAP_ROUTER_ABI, signer));
-      const amountIn = ethers.utils.parseUnits(fromValue, safeFromToken.decimals);
-      const quoted = estimatedOut ? ethers.utils.parseUnits(estimatedOut, safeToToken.decimals) : 0;
-      const minAmountOut = quoted ? quoted.mul(10000 - Math.floor(parseFloat(slippage) * 100)).div(10000) : 0;
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, signer);
+      const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
+      const quoted = estimatedOut ? ethers.parseUnits(estimatedOut, safeToToken.decimals) : 0n;
+      
+      // Calculate minimum amount out based on slippage
+      const slippageBps = Math.floor(parseFloat(slippage) * 100);
+      const minAmountOut = quoted > 0n ? 
+        quoted * BigInt(10000 - slippageBps) / BigInt(10000) : 
+        0n;
+      
       const params = {
         tokenIn: safeFromToken.symbol === 'ETH' ? WETH_ADDRESS : safeFromToken.address,
         tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
@@ -379,14 +425,39 @@ export default function SwapPage() {
         amountOutMinimum: minAmountOut,
         sqrtPriceLimitX96: 0,
       };
+      
+      // Set modal for swap pending
+      setIsTxStatusModalOpen(true);
+      setModalStatus('loading');
+      setModalTitle('Swapping...');
+      setModalMessage(`Swapping ${fromValue} ${safeFromToken.symbol} to ${safeToToken.symbol}`);
+      
       const tx = await router.exactInputSingle(
         params,
-        { value: safeFromToken.symbol === 'ETH' ? amountIn : 0 }
+        { value: safeFromToken.symbol === 'ETH' ? amountIn : 0n }
       );
+      
       setSwapTxHash(tx.hash);
+      setModalTxHash(tx.hash);
+      
       await tx.wait();
+      
+      // Update modal for swap success
+      setModalStatus('success');
+      setModalTitle('Swap Successful!');
+      setModalMessage(`Swapped ${fromValue} ${safeFromToken.symbol} to ${safeToToken.symbol}`);
+      
+      // Reset input fields after successful swap
+      setFromValue('');
+      setToValue('');
     } catch (e) {
+      console.error('Swap error:', e);
       setSwapError('Swap failed: ' + (e.reason || e.message));
+      
+      // Update modal for swap failure
+      setModalStatus('error');
+      setModalTitle('Swap Failed');
+      setModalMessage(`Error swapping ${safeFromToken.symbol} to ${safeToToken.symbol}: ${e.reason || e.message}`);
     }
     setSwapLoading(false);
   };
@@ -398,7 +469,7 @@ export default function SwapPage() {
   };
   const handleMaxClick = () => {
     if (isConnected && fromTokenBalanceData && fromTokenBalanceData.value) {
-      setFromValue(formatUnits(fromTokenBalanceData.value, safeFromToken.decimals));
+      setFromValue(ethers.formatUnits(fromTokenBalanceData.value, safeFromToken.decimals));
     }
   };
   const handleSwapTokens = () => {
@@ -787,7 +858,11 @@ export default function SwapPage() {
 }
 
 // In the swap button, disable if !isValidPair(safeFromToken, safeToToken)
-const isValidPair = (from, to) => (
-  (from.symbol === 'ETH' && to.symbol === 'USDC') ||
-  (from.symbol === 'USDC' && to.symbol === 'ETH')
-);
+const isValidPair = (from, to) => {
+  // Make sure both tokens are defined
+  if (!from || !to) return false;
+  
+  // Check if it's a valid ETH/USDC pair
+  return (from.symbol === 'ETH' && to.symbol === 'USDC') ||
+         (from.symbol === 'USDC' && to.symbol === 'ETH');
+};

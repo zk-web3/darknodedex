@@ -1,10 +1,10 @@
 import { ethers } from "ethers";
 
 // Uniswap V3 Router 02 Address for Sepolia
-export const UNISWAP_ROUTER_ADDRESS = "0x2626664c2603336E57B271c5C0b26F421741e481";
+export const UNISWAP_ROUTER_ADDRESS = "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E";
 // Uniswap V3 Quoter V2 Address for Sepolia
-export const UNISWAP_QUOTER_ADDRESS = "0x61fFE014bA17989E743c5F6cB21bF9697530B21e";
-export const UNISWAP_FACTORY_ADDRESS = "0x6FD8c6e6bB5C3a7e6e6e6e6e6e6e6e6e6e6e6e6";
+export const UNISWAP_QUOTER_ADDRESS = "0x1d0F9d29e5b6D2A8f3a18Ee6171aDf4b2E9F8F0A";
+export const UNISWAP_FACTORY_ADDRESS = "0x0227628f3F023bb0B980b67D528571c95c6DaC1c";
 export const BASE_SEPOLIA_EXPLORER_URL = "https://sepolia.etherscan.io/";
 
 // Minimal ABI for Uniswap V3 Router 02 (exactInputSingle, exactOutputSingle, approve)
