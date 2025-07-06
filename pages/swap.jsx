@@ -75,6 +75,7 @@ export default function SwapPage() {
   const [estimatedOut, setEstimatedOut] = useState('');
   const [slippageWarning, setSlippageWarning] = useState('');
   const [gasEstimate, setGasEstimate] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
 
   // Defensive: fallback to empty object if fromToken/toToken is undefined
   const safeFromToken = fromToken || { address: '', symbol: '', decimals: 18, logo: '' };
@@ -156,23 +157,65 @@ export default function SwapPage() {
   // Update getQuoteTokenAddress to handle native ETH (return WETH address for Uniswap contract calls)
   const getQuoteTokenAddress = (token) => token && token.symbol === 'ETH' ? WETH_ADDRESS : token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
-    if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) return 0n;
+    if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) {
+      console.log('Invalid input for quote:', { amountInBigInt, currentFromToken, currentToToken });
+      return 0n;
+    }
     try {
+      console.log(`Getting quote for ${amountInBigInt.toString()} from ${currentFromToken.symbol} to ${currentToToken.symbol}`);
+      
+      const params = {
+        tokenIn: getQuoteTokenAddress(currentFromToken),
+        tokenOut: getQuoteTokenAddress(currentToToken),
+        amountIn: amountInBigInt,
+        fee: 3000,
+        sqrtPriceLimitX96: 0n,
+      };
+      
+      console.log('Quote parameters:', {
+        tokenIn: params.tokenIn,
+        tokenOut: params.tokenOut,
+        fee: params.fee,
+        amountIn: amountInBigInt.toString(),
+        sqrtPriceLimitX96: params.sqrtPriceLimitX96.toString()
+      });
+      
       const quote = await publicClient.readContract({
         address: UNISWAP_QUOTER_ADDRESS,
         abi: UNISWAP_QUOTER_ABI,
         functionName: 'quoteExactInputSingle',
-        args: [{
-          tokenIn: getQuoteTokenAddress(currentFromToken),
-          tokenOut: getQuoteTokenAddress(currentToToken),
-          amountIn: amountInBigInt,
-          fee: 3000,
-          sqrtPriceLimitX96: 0n,
-        }],
+        args: [params],
       });
+      
       // Uniswap V3 Quoter V2 returns [amountOut, ...]
-      return BigInt(Array.isArray(quote) ? quote[0] : quote);
+      const result = BigInt(Array.isArray(quote) ? quote[0] : quote);
+      console.log('Quote result:', result.toString());
+      
+      // Validate the result is not zero
+      if (result === 0n) {
+        console.warn('Quote returned zero - likely no liquidity');
+      }
+      
+      return result;
     } catch (error) {
+      console.error('Error getting quote:', error);
+      
+      // Log more detailed error information
+      if (error.message) {
+        console.error('Error message:', error.message);
+      }
+      
+      if (error.cause) {
+        console.error('Error cause:', error.cause);
+      }
+      
+      // Check for specific error types
+      if (error.message?.includes('no route found')) {
+        console.error('No route found between these tokens');
+      } else if (error.message?.includes('insufficient liquidity')) {
+        console.error('Insufficient liquidity for this swap');
+      }
+      
       return 0n;
     }
   }, [publicClient]);
@@ -285,11 +328,38 @@ export default function SwapPage() {
   // Uniswap Quoter: Estimate output
   useEffect(() => {
     async function fetchQuote() {
-      if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setEstimatedOut('');
+      if (!fromValue || !safeFromToken || !safeToToken || !isConnected) {
+        setEstimatedOut('');
+        setToValue('');
+        setSwapError('');
+        return;
+      }
+      
       try {
+        // Validate input amount
+        if (parseFloat(fromValue) <= 0) {
+          setEstimatedOut('');
+          setToValue('');
+          return;
+        }
+        
+        // Check if user has sufficient balance
+        if (safeFromToken.symbol === 'ETH' && fromTokenBalanceData) {
+          const userBalance = parseFloat(fromTokenBalanceData.formatted || '0');
+          if (parseFloat(fromValue) > userBalance) {
+            setSwapError(`Insufficient ${safeFromToken.symbol} balance. You have ${userBalance} ${safeFromToken.symbol}`);
+            setSlippageWarning(`Insufficient ${safeFromToken.symbol} balance. You have ${userBalance} ${safeFromToken.symbol}`);
+            setEstimatedOut('');
+            setToValue('');
+            return;
+          }
+        }
+        
+        // Clear any previous errors
+        setSwapError('');
+        
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const quoter = new ethers.Contract(UNISWAP_QUOTER_ADDRESS, QUOTER_ABI, signer);
+        const quoter = new ethers.Contract(UNISWAP_QUOTER_ADDRESS, QUOTER_ABI, provider);
         const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
         
         // Create params object according to the ABI structure
@@ -301,31 +371,74 @@ export default function SwapPage() {
           sqrtPriceLimitX96: 0
         };
         
+        console.log('Fetching quote with params:', params);
         const quoted = await quoter.quoteExactInputSingle(params);
+        console.log('Quote result:', quoted);
+        
         // Handle both array return and single value return
         const amountOut = Array.isArray(quoted) ? quoted[0] : quoted;
         
-        setEstimatedOut(ethers.formatUnits(amountOut, safeToToken.decimals));
-        setSlippageWarning(parseFloat(fromValue) > 0 && parseFloat(amountOut) === 0 ? 'No liquidity for this pair.' : '');
+        if (amountOut) {
+          const formattedAmount = ethers.formatUnits(amountOut, safeToToken.decimals);
+          console.log('Formatted amount out:', formattedAmount);
+          
+          setEstimatedOut(formattedAmount);
+          setToValue(formattedAmount);
+          setSlippageWarning(parseFloat(formattedAmount) === 0 ? 'No liquidity for this pair.' : '');
+        } else {
+          console.warn('Quote returned null or zero');
+          setEstimatedOut('');
+          setToValue('');
+          setSwapError('Unable to get quote. There may be insufficient liquidity for this pair.');
+          setSlippageWarning('No liquidity for this pair.');
+        }
       } catch (e) {
         console.error('Quote error:', e);
         setEstimatedOut('');
-        setSlippageWarning('No liquidity or error fetching quote.');
+        setToValue('');
+        
+        // Handle specific error messages
+        if (e.message?.includes('insufficient liquidity')) {
+          setSwapError('Insufficient liquidity for this trade');
+          setSlippageWarning('Insufficient liquidity for this trade');
+        } else if (e.message?.includes('insufficient funds')) {
+          setSwapError('Insufficient funds for gas + value');
+          setSlippageWarning('Insufficient funds for gas + value');
+        } else {
+          setSwapError(`Error fetching quote: ${e.reason || e.message || 'Unknown error'}`);
+          setSlippageWarning(`Error fetching quote: ${e.reason || e.message || 'Unknown error'}`);
+        }
       }
     }
-    fetchQuote();
-  }, [fromValue, safeFromToken, safeToToken, isConnected]);
+    
+    // Add debounce to prevent too many requests
+    const debounceTimer = setTimeout(fetchQuote, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [fromValue, safeFromToken, safeToToken, isConnected, fromTokenBalanceData]);
+
 
   // Gas Estimation
   useEffect(() => {
     async function estimateGas() {
-      if (!fromValue || !safeFromToken || !safeToToken || !isConnected) return setGasEstimate('');
+      if (!fromValue || !safeFromToken || !safeToToken || !isConnected || !estimatedOut || parseFloat(estimatedOut) === 0) {
+        setGasEstimate('');
+        return;
+      }
+      
+      // Check if user has sufficient balance for the swap amount
+      if (safeFromToken.symbol === 'ETH' && fromTokenBalanceData) {
+        const userBalance = parseFloat(fromTokenBalanceData.formatted || '0');
+        if (parseFloat(fromValue) > userBalance) {
+          setGasEstimate('');
+          return;
+        }
+      }
+      
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, signer);
+        const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, provider);
         const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
-        const quoted = estimatedOut ? ethers.parseUnits(estimatedOut, safeToToken.decimals) : 0n;
+        const quoted = ethers.parseUnits(estimatedOut, safeToToken.decimals);
         
         // Calculate minimum amount out based on slippage
         const slippageBps = Math.floor(parseFloat(slippage) * 100);
@@ -344,18 +457,45 @@ export default function SwapPage() {
           sqrtPriceLimitX96: 0,
         };
         
-        const gas = await router.estimateGas.exactInputSingle(
-          params,
-          { value: safeFromToken.symbol === 'ETH' ? amountIn : 0n }
-        );
-        setGasEstimate(gas.toString());
+        // Use a try-catch block specifically for gas estimation
+        try {
+          const gas = await router.estimateGas.exactInputSingle(
+            params,
+            { value: safeFromToken.symbol === 'ETH' ? amountIn : 0n }
+          );
+          
+          // Add a 20% buffer to the gas estimate for safety
+          const gasWithBuffer = (BigInt(gas) * 120n) / 100n;
+          setGasEstimate(gasWithBuffer.toString());
+          
+          // If we're swapping ETH, calculate the total ETH needed (swap amount + gas)
+          if (safeFromToken.symbol === 'ETH') {
+            const gasPrice = await provider.getGasPrice();
+            const gasCostInEth = (gasWithBuffer * gasPrice) / 10n**18n;
+            const totalEthNeeded = amountIn + gasCostInEth;
+            
+            // Check if user has enough ETH for both swap and gas
+            if (fromTokenBalanceData && totalEthNeeded > fromTokenBalanceData.value) {
+              console.warn('User may not have enough ETH for gas + swap amount');
+            }
+          }
+        } catch (gasError) {
+          console.error('Gas estimation specific error:', gasError);
+          if (gasError.message.includes('insufficient funds')) {
+            setSwapError('Insufficient ETH for gas fees. Please add more ETH to your wallet.');
+          }
+          setGasEstimate('');
+        }
       } catch (e) {
-        console.error('Gas estimation error:', e);
+        console.error('Gas estimation setup error:', e);
         setGasEstimate('');
       }
     }
-    estimateGas();
-  }, [fromValue, safeFromToken, safeToToken, isConnected, estimatedOut, slippage, address]);
+    
+    // Add debounce to prevent too many requests
+    const debounceTimer = setTimeout(estimateGas, 800);
+    return () => clearTimeout(debounceTimer);
+  }, [fromValue, safeFromToken, safeToToken, isConnected, estimatedOut, slippage, address, fromTokenBalanceData]);
 
   // Approve USDC if needed
   const handleApprove = async () => {
@@ -402,12 +542,52 @@ export default function SwapPage() {
     setSwapLoading(true);
     setSwapError('');
     setSwapTxHash('');
+    
+    // Validate input parameters
+    if (!isConnected || !safeFromToken || !safeToToken || !fromValue) {
+      setSwapError('Cannot swap: missing required information');
+      setSwapLoading(false);
+      return;
+    }
+    
+    // Validate amounts
+    if (parseFloat(fromValue) <= 0) {
+      setSwapError('Please enter an amount greater than 0');
+      setSwapLoading(false);
+      return;
+    }
+    
+    // Validate balance before attempting swap
+    if (safeFromToken.symbol === 'ETH' && fromTokenBalanceData) {
+      const userBalance = parseFloat(fromTokenBalanceData.formatted || '0');
+      // Add buffer for gas (0.005 ETH for better safety margin)
+      const requiredAmount = parseFloat(fromValue) + 0.005;
+      
+      if (requiredAmount > userBalance) {
+        setSwapError(`Insufficient ETH balance. You need approximately ${requiredAmount.toFixed(6)} ETH (including gas) but only have ${userBalance} ETH`);
+        setSwapLoading(false);
+        return;
+      }
+    } else if (safeFromToken.symbol !== 'ETH' && fromTokenBalanceData) {
+      const userBalance = parseFloat(fromTokenBalanceData.formatted || '0');
+      if (parseFloat(fromValue) > userBalance) {
+        setSwapError(`Insufficient ${safeFromToken.symbol} balance. You have ${userBalance} ${safeFromToken.symbol}`);
+        setSwapLoading(false);
+        return;
+      }
+    }
+    
     try {
+      // Validate quote exists
+      if (!estimatedOut || parseFloat(estimatedOut) === 0) {
+        throw new Error('Could not get a quote for this swap. There may be insufficient liquidity.');
+      }
+      
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, SWAP_ROUTER_ABI, signer);
       const amountIn = ethers.parseUnits(fromValue, safeFromToken.decimals);
-      const quoted = estimatedOut ? ethers.parseUnits(estimatedOut, safeToToken.decimals) : 0n;
+      const quoted = ethers.parseUnits(estimatedOut, safeToToken.decimals);
       
       // Calculate minimum amount out based on slippage
       const slippageBps = Math.floor(parseFloat(slippage) * 100);
@@ -420,11 +600,32 @@ export default function SwapPage() {
         tokenOut: safeToToken.symbol === 'ETH' ? WETH_ADDRESS : safeToToken.address,
         fee: 3000,
         recipient: address,
-        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 20 minutes deadline for safety
         amountIn,
         amountOutMinimum: minAmountOut,
         sqrtPriceLimitX96: 0,
       };
+      
+      console.log('Swap params:', params);
+      console.log('ETH value:', safeFromToken.symbol === 'ETH' ? amountIn.toString() : '0');
+      
+      // First estimate gas to catch errors before sending transaction
+      try {
+        await router.estimateGas.exactInputSingle(
+          params,
+          { value: safeFromToken.symbol === 'ETH' ? amountIn : 0n }
+        );
+      } catch (gasError) {
+        console.error('Gas estimation error:', gasError);
+        if (gasError.message?.includes('insufficient funds')) {
+          throw new Error('Insufficient ETH for gas fees. Please add more ETH to your wallet.');
+        } else if (gasError.message?.includes('execution reverted')) {
+          // Extract the revert reason if available
+          const revertReason = gasError.message.match(/execution reverted: (.+?)(?:\n|$)/);
+          throw new Error(revertReason ? `Transaction would fail: ${revertReason[1]}` : 'Transaction would fail');
+        }
+        throw gasError;
+      }
       
       // Set modal for swap pending
       setIsTxStatusModalOpen(true);
@@ -452,12 +653,26 @@ export default function SwapPage() {
       setToValue('');
     } catch (e) {
       console.error('Swap error:', e);
-      setSwapError('Swap failed: ' + (e.reason || e.message));
+      
+      let errorMessage = e.reason || e.message || 'Unknown error';
+      
+      // Format user-friendly error messages
+      if (errorMessage.includes('insufficient funds')) {
+        errorMessage = 'Insufficient ETH for this transaction. You need ETH to pay for both the swap amount and gas fees.';
+      } else if (errorMessage.includes('user rejected')) {
+        errorMessage = 'Transaction rejected by user.';
+      } else if (errorMessage.includes('execution reverted')) {
+        errorMessage = 'Transaction failed. This could be due to price movement or insufficient liquidity.';
+      } else if (errorMessage.includes('price impact too high')) {
+        errorMessage = 'Price impact is too high. Try a smaller amount or different tokens.';
+      }
+      
+      setSwapError('Swap failed: ' + errorMessage);
       
       // Update modal for swap failure
       setModalStatus('error');
       setModalTitle('Swap Failed');
-      setModalMessage(`Error swapping ${safeFromToken.symbol} to ${safeToToken.symbol}: ${e.reason || e.message}`);
+      setModalMessage(`Error swapping ${safeFromToken.symbol} to ${safeToToken.symbol}: ${errorMessage}`);
     }
     setSwapLoading(false);
   };
@@ -696,8 +911,53 @@ export default function SwapPage() {
             {swapLoading ? 'Swapping...' : 'Swap'}
           </button>
         )}
+        
+        {/* Debug Mode Toggle */}
+        <div className="mt-4 flex justify-end">
+          <button 
+            onClick={() => setDebugMode(!debugMode)} 
+            className="text-xs text-gray-500 hover:text-gray-300 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {debugMode ? 'Hide Debug Info' : 'Show Debug Info'}
+          </button>
+        </div>
+        
+        {/* Debug Information Panel */}
+        {debugMode && (
+          <div className="mt-4 p-3 border border-gray-700 rounded-md bg-gray-800 text-xs font-mono">
+            <h4 className="font-bold mb-2 text-gray-300">Debug Information</h4>
+            <div className="space-y-1 overflow-x-auto text-gray-400">
+              <p><span className="font-semibold text-gray-300">Network:</span> Sepolia Testnet</p>
+              <p><span className="font-semibold text-gray-300">Connected:</span> {isConnected ? 'Yes' : 'No'}</p>
+              <p><span className="font-semibold text-gray-300">Address:</span> {address || 'Not connected'}</p>
+              <p><span className="font-semibold text-gray-300">From Token:</span> {safeFromToken?.symbol} ({safeFromToken?.address ? safeFromToken.address.slice(0, 10) + '...' : 'Native ETH'})</p>
+              <p><span className="font-semibold text-gray-300">To Token:</span> {safeToToken?.symbol} ({safeToToken?.address ? safeToToken.address.slice(0, 10) + '...' : 'Native ETH'})</p>
+              <p><span className="font-semibold text-gray-300">From Amount:</span> {fromValue || '0'}</p>
+              <p><span className="font-semibold text-gray-300">To Amount:</span> {toValue || '0'}</p>
+              <p><span className="font-semibold text-gray-300">From Balance:</span> {fromTokenBalanceData?.formatted || '0'} {safeFromToken?.symbol}</p>
+              <p><span className="font-semibold text-gray-300">To Balance:</span> {toTokenBalanceData?.formatted || '0'} {safeToToken?.symbol}</p>
+              <p><span className="font-semibold text-gray-300">Gas Estimate:</span> {gasEstimate || 'Not calculated'}</p>
+              <p><span className="font-semibold text-gray-300">Slippage:</span> {slippage}%</p>
+              <p><span className="font-semibold text-gray-300">Needs Approval:</span> {needsApproval ? 'Yes' : 'No'}</p>
+              <p><span className="font-semibold text-gray-300">Valid Pair:</span> {isValidPair(safeFromToken, safeToToken) ? 'Yes' : 'No'}</p>
+              <p><span className="font-semibold text-gray-300">Error:</span> {swapError || 'None'}</p>
+              <p><span className="font-semibold text-gray-300">Warning:</span> {slippageWarning || 'None'}</p>
+              <p><span className="font-semibold text-gray-300">Uniswap Router:</span> {UNISWAP_ROUTER_ADDRESS?.slice(0, 10)}...</p>
+              <p><span className="font-semibold text-gray-300">Uniswap Quoter:</span> {UNISWAP_QUOTER_ADDRESS?.slice(0, 10)}...</p>
+            </div>
+          </div>
+        )}
         {swapError && (
-          <div className="text-red-500 text-sm mt-2">{swapError}</div>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mt-4 flex items-start">
+            <svg className="w-5 h-5 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div className="text-sm">{swapError}</div>
+          </div>
         )}
       </div>
       {/* Token Selection Modals */}
