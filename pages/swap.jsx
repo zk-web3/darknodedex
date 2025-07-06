@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { MaxUint256 } from 'ethers';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, usePublicClient, useSimulateContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { baseSepolia } from 'wagmi/chains';
+import { sepolia } from 'wagmi/chains';
 import { TOKENS, USDC_TOKEN } from '../src/utils/tokens';
 import ERC20_ABI from '../src/abis/ERC20.json';
 import { UNISWAP_ROUTER_ADDRESS, UNISWAP_ROUTER_ABI, UNISWAP_QUOTER_ADDRESS, UNISWAP_QUOTER_ABI, BASE_SEPOLIA_EXPLORER_URL } from '../src/utils/uniswap';
@@ -21,7 +21,7 @@ function classNames(...classes) {
 }
 
 // Update explorer URL usage
-const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Monad explorer
+const EXPLORER_URL = BASE_SEPOLIA_EXPLORER_URL; // Sepolia explorer
 
 // Remove WETH from ALL_TOKENS and use native ETH
 const ETH_TOKEN = {
@@ -36,9 +36,10 @@ const ALL_TOKENS = [ETH_TOKEN, USDC_TOKEN];
 const initialFromToken = ETH_TOKEN;
 const initialToToken = USDC_TOKEN;
 
-const UNISWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
-const UNISWAP_QUOTER = '0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6';
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+// Use Uniswap addresses from utils/uniswap.js
+const UNISWAP_ROUTER = UNISWAP_ROUTER_ADDRESS;
+const UNISWAP_QUOTER = UNISWAP_QUOTER_ADDRESS;
+const WETH_ADDRESS = WETH_TOKEN.address; // Use Sepolia WETH address from tokens.js
 
 export default function SwapPage() {
   // Wallet
@@ -82,19 +83,19 @@ export default function SwapPage() {
   // Wallet Connect Handler
   const handleConnectWallet = async () => {
     if (isConnected) {
-      if (chain?.id !== baseSepolia.id) {
+      if (chain?.id !== sepolia.id) {
         try {
-          await switchChain({ chainId: baseSepolia.id });
-          toast.success('Switched to Base Sepolia Network!');
+          await switchChain({ chainId: sepolia.id });
+          toast.success('Switched to Sepolia Network!');
         } catch (switchError) {
           if (switchError.code === 4902) {
-            toast.error('Base Sepolia network not found. Please add it to MetaMask.');
+            toast.error('Sepolia network not found. Please add it to MetaMask.');
           } else {
             toast.error(`Failed to switch network: ${switchError.message}`);
           }
         }
       } else {
-        toast.success('Wallet is already connected and on Base Sepolia Network!');
+        toast.success('Wallet is already connected and on Sepolia Network!');
       }
     } else {
       try {
@@ -153,7 +154,7 @@ export default function SwapPage() {
   // Uniswap Quote
   const publicClient = usePublicClient();
   // Update getQuoteTokenAddress to handle native ETH (return WETH address for Uniswap contract calls)
-  const getQuoteTokenAddress = (token) => token && token.symbol === 'ETH' ? WETH_TOKEN.address : token?.address;
+  const getQuoteTokenAddress = (token) => token && token.symbol === 'ETH' ? WETH_ADDRESS : token?.address;
   const getQuote = useCallback(async (amountInBigInt, currentFromToken, currentToToken) => {
     if (!publicClient || !currentFromToken || !currentToToken || !currentFromToken.address || !currentToToken.address || amountInBigInt === 0n) return 0n;
     try {
